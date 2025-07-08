@@ -171,7 +171,7 @@ const GameLayout = ({ selectedGame, handleBackToGames, onToggleLayout, playerNam
       <div style={styles.dualPanel}>
         {/* Left: Journal */}
         <div style={styles.leftPanel(leftWidth)}>
-          <JournalQuestions logAction={logAction} />
+          <JournalQuestions logAction={logAction} id={typeof window !== 'undefined' ? localStorage.getItem('selectedPlayer') : ''} />
         </div>
         {/* Resizer */}
         <div

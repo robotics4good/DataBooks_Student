@@ -3,7 +3,6 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import LandingPage from "./LandingPage";
 import LoginPage from "./LoginPage";
 import GamePage from "./GamePage";
-import ControlPanel from "./ControlPanel";
 import { UserLogProvider } from "./UserLog";
 import "./App.css";
 
@@ -34,7 +33,6 @@ const App = () => {
             <Route path="/" element={<LandingPage gameConfig={GAME_CONFIG} />} />
             <Route path="/login/:gameKey" element={<LoginPage gameConfig={GAME_CONFIG} />} />
             <Route path="/games/:gameKey" element={<GamePage gameConfig={GAME_CONFIG} />} />
-            <Route path="/control-panel" element={<ControlPanel />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>

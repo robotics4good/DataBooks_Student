@@ -95,7 +95,9 @@ export const QuestionBox = ({ question, index, logAction, styles = {} }) => {
 };
 
 // Main journal questions component
-export const JournalQuestions = ({ logAction, styles = {} }) => {
+export const JournalQuestions = ({ logAction, styles = {}, id }) => {
+  const { journalAnswers } = useJournal();
+
   return (
     <div>
       <h3>Journal</h3>

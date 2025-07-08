@@ -351,7 +351,7 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
           <React.Fragment>
             <div style={{ height: "100%", padding: "20px", overflow: "auto" }}>
               <div style={styles.card}>
-                <JournalQuestions logAction={logAction} />
+                <JournalQuestions logAction={logAction} id={typeof window !== 'undefined' ? localStorage.getItem('selectedPlayer') : ''} />
               </div>
             </div>
           </React.Fragment>
