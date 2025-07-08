@@ -1,0 +1,62 @@
+{
+  "name": "data-organisms",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@nivo/bar": "^0.80.0",
+    "@nivo/bump": "^0.80.0",
+    "@nivo/core": "^0.80.0",
+    "@nivo/heatmap": "^0.80.0",
+    "@nivo/line": "^0.80.0",
+    "@nivo/network": "^0.99.0",
+    "@nivo/pie": "^0.80.0",
+    "@nivo/scatterplot": "^0.80.0",
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^13.5.0",
+    "body-parser": "^2.2.0",
+    "d3": "^7.9.0",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "firebase": "^11.8.1",
+    "firebase-admin": "^13.4.0",
+    "node-fetch": "^2.7.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.5.3",
+    "react-scripts": "^5.0.1",
+    "web-vitals": "^2.1.4",
+    "ws": "^8.18.2"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "test-esp": "node test-esp.js",
+    "test-esp-single": "node test-esp.js --single",
+    "test-esp-fast": "node test-esp.js --interval=500"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@types/d3": "^7.4.3"
+  }
+}

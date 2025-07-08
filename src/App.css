@@ -1,0 +1,327 @@
+:root, .unity-mode {
+  --lavender-bg: #d6c3d6;
+  --cream-panel: #f8f3ea;
+  --offwhite-bg: #f4ede4;
+  --peach-bg: #aac6a3;
+  --tab-header-border: var(--scrollbar-red);
+  --accent-red: #e94f4a;
+  --dark-red: #c0392b;
+  --dimmer-red: #d35454;
+  --accent-blue: #2a6ebb;
+  --accent-green: #a6c7a1;
+  --dark-green: #4fa35e;
+  --dimmer-green: #b7d3b7;
+  --divider-green-light: #c8e6c9;
+  --ultra-light-green: #eaf6ea;
+  --divider-green-dark: #388e3c;
+  --tab-border-red: #c85762;
+  --scrollbar-red: #e57373;
+  --text-dark: #222222;
+  --text-light: #fff;
+  --panel-border: #b8a9b8;
+}
+
+/* Dark Mode Theme */
+.dark-mode {
+  --lavender-bg: #1a1a1a;
+  --cream-panel: #2a2a2a;
+  --offwhite-bg: #3a3a3a;
+  --peach-bg: #1a1a1a;
+  --accent-red: #e57373;
+  --dark-red: #c0392b;
+  --dimmer-red: #d35454;
+  --accent-blue: #64b5f6;
+  --accent-green: #81c784;
+  --dark-green: #4fa35e;
+  --dimmer-green: #a5d6a7;
+  --divider-green-light: #4caf50;
+  --divider-green-dark: #2e7d32;
+  --tab-border-red: #e57373;
+  --scrollbar-red: #e57373;
+  --text-dark: #ffffff;
+  --text-light: #000000;
+  --panel-border: #4a4a4a;
+}
+
+/* Light Mode Theme */
+.light-mode {
+  --lavender-bg: #f5f5f5;
+  --cream-panel: #ffffff;
+  --offwhite-bg: #fafafa;
+  --peach-bg: #e8f5e9;
+  --tab-header-border: #e0e0e0;
+  --accent-red: #ef5350;
+  --dark-red: #d32f2f;
+  --dimmer-red: #e57373;
+  --accent-blue: #1976d2;
+  --accent-green: #43a047;
+  --dark-green: #2e7d32;
+  --dimmer-green: #81c784;
+  --divider-green-light: #a5d6a7;
+  --divider-green-dark: #66bb6a;
+  --tab-border-red: #ef5350;
+  --scrollbar-red: #ef5350;
+  --text-dark: #000000;
+  --text-light: #ffffff;
+  --panel-border: #e0e0e0;
+}
+
+body, html, #root {
+  min-height: 100vh !important;
+  height: auto !important;
+  overflow-y: auto !important;
+}
+
+body, .App {
+  background: var(--lavender-bg);
+  color: var(--text-dark);
+  min-height: 576px; /* 75% of 768px */
+  min-width: 768px; /* 75% of 1024px */
+  font-family: 'Segoe UI', 'Arial', sans-serif;
+  margin: 0;
+  padding: 0;
+  /* overflow-x: hidden; */
+}
+
+/* Panel/Sidebar */
+.panel, .sidebar, .left-panel {
+  background: var(--cream-panel);
+  border-radius: 0;
+  border: none;
+  box-shadow: 0 2px 8px rgba(34,34,34,0.04);
+  color: var(--text-dark);
+  font-family: 'Montserrat', 'Segoe UI', Arial, sans-serif;
+  font-weight: 600;
+}
+
+/* Make sure all text on cream panels is dark and bold */
+.cream-panel, .panel, .sidebar, .left-panel, .panel *, .cream-panel *, .sidebar *, .left-panel * {
+  color: var(--text-dark) !important;
+  font-family: 'Montserrat', 'Segoe UI', Arial, sans-serif;
+  font-weight: 600;
+}
+
+/* Buttons */
+button {
+  background: var(--accent-green);
+  color: var(--text-dark);
+  border: none;
+  border-radius: 8px;
+  padding: 0.8rem 1.5rem;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+button:active, button:focus {
+  outline: none;
+  box-shadow: none;
+}
+button.primary {
+  background: var(--accent-blue);
+  color: var(--text-light);
+  border-radius: 8px;
+}
+button.danger {
+  background: var(--accent-red);
+  color: var(--text-light);
+  border-radius: 8px;
+}
+
+/* Tab buttons should be rectangular */
+.tab-btn {
+  border-radius: 0 !important;
+}
+
+/* Headings */
+h1, h2, h3 {
+  color: var(--accent-blue);
+  font-family: 'Montserrat', 'Segoe UI', Arial, sans-serif;
+  font-weight: 700;
+}
+
+/* Inputs/Textareas */
+input, textarea {
+  background: var(--cream-panel);
+  color: var(--text-dark);
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  padding: 0.5rem;
+  font-size: 1rem;
+  font-family: 'Montserrat', 'Segoe UI', Arial, sans-serif;
+  font-weight: 500;
+}
+
+/* Paragraphs and labels on light backgrounds */
+p, label {
+  color: var(--text-dark);
+  font-weight: 500;
+}
+
+/* Placeholder text for input and textarea */
+input::placeholder, textarea::placeholder {
+  color: var(--text-dark);
+  opacity: 1;
+  font-weight: 500;
+}
+
+/* Misc */
+::-webkit-scrollbar {
+  width: 8px;
+  background: var(--cream-panel);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-red);
+  border-radius: 4px;
+}
+
+.App {
+  text-align: center;
+}
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
+.App-header {
+  background-color: #282c34;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+  box-sizing: border-box;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* --offwhite-bg is used for the right (graph) panel background for subtle contrast with the cream panel */
+
+/* --divider-green-light is the default color for the draggable divider, --divider-green-dark is used when resizing */
+
+/* Tab header border and button separation */
+.tab-header {
+  display: flex;
+  border-bottom: 4px solid var(--tab-header-border);
+}
+.tab-btn + .tab-btn {
+  border-left: 2px solid var(--tab-border-red);
+}
+
+/* Peach background for main page */
+.landing-bg {
+  background: linear-gradient(135deg, #b993d6 0%, #8ca6db 50%, #4b306a 100%) !important;
+}
+
+/* Dark green for Alien Invasion button */
+.dark-green {
+  background: var(--dark-green) !important;
+  color: var(--text-light) !important;
+}
+
+/* Dimmer green for other main page buttons */
+.dimmer-green {
+  background: var(--dimmer-green) !important;
+  color: var(--text-dark) !important;
+}
+
+/* Dark red for Alien Invasion button */
+.dark-red {
+  background: var(--dark-red) !important;
+  color: var(--text-light) !important;
+}
+
+/* Dimmer red for other main page buttons */
+.dimmer-red {
+  background: var(--dimmer-red) !important;
+  color: var(--text-light) !important;
+}
+
+/* Notification Styles */
+.notification {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 1.5rem 3rem;
+  border-radius: 8px;
+  color: var(--text-light);
+  font-size: 1.2rem;
+  font-weight: bold;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  text-align: center;
+}
+
+.notification.success {
+  background: var(--dark-green);
+}
+
+.notification.error {
+  background: var(--accent-red);
+}
+
+/* Custom Select Dropdown */
+.plot-selector {
+  background-color: var(--cream-panel);
+  color: var(--text-dark);
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  padding: 0.5rem 2.5rem 0.5rem 1rem;
+  font-size: 1rem;
+  font-family: 'Montserrat', 'Segoe UI', Arial, sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23232323%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E');
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: .65em auto;
+}
+
+.size-unsupported-message {
+  display: none;
+}
+
+@media (max-width: 767px), (max-height: 575px) {
+  .main-content {
+    display: none;
+  }
+  .size-unsupported-message {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    width: 100vw;
+    text-align: center;
+    font-size: 1.5rem;
+    color: var(--text-dark);
+    background: var(--cream-panel);
+  }
+}
+
+.main-content {
+  min-height: 100vh;
+  overflow-y: auto;
+}
