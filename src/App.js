@@ -17,7 +17,8 @@ const GAME_CONFIG = {
     { name: "Rush Hour Rebels", key: "rush-hour-rebels", enabled: false }
   ],
   playerNames: [
-    "Atlas", "Blaze", "Comet", "Echo", "Falcon", "Gem", "Harbor", "Indigo", "Jade", "Knight", "Luna", "Maverick", "Nova", "Orion", "Phoenix", "Quasar", "Rune", "Stellar", "Vega"
+    "Luma", "Buzz", "Kino", "Zee", "Taz", "Jade", "Star", "Gem", "Echo",
+    "Synth", "Jazz", "Drift", "Nova", "Hex", "Ember", "Mav", "Geo", "Eli", "Glow", "Lex"
   ]
 };
 

@@ -131,8 +131,6 @@ const PollinationParty = () => {
     setPollen([]);
   };
 
-
-
   return (
     <div style={{ 
       height: '100vh', 
