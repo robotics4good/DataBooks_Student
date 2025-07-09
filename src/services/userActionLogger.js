@@ -38,7 +38,7 @@ async function initSessionId() {
 // Log batching
 let logBuffer = [];
 let flushTimeout = null;
-const FLUSH_INTERVAL = 10000; // 10 seconds
+const FLUSH_INTERVAL = 20000; // 20 seconds
 const MAX_BATCH = 10;
 
 function flushLogs() {
@@ -49,15 +49,12 @@ function flushLogs() {
     logBuffer = [];
     return;
   }
-  const logsToSend = logBuffer.slice();
+  // Use flush time as the batch key
+  const flushTimestamp = sanitize(getSanDiegoIsoString());
+  const path = `sessions/${sessionId}/UserLogs/${userId}/${flushTimestamp}`;
+  // Write the entire batch as an array (no per-log writes)
+  set(ref(db, path), logBuffer.slice()).catch(() => {});
   logBuffer = [];
-  logsToSend.forEach(log => {
-    try {
-      const ts = sanitize(log.timestamp);
-      const path = `sessions/${sessionId}/UserLogs/${userId}/${ts}`;
-      set(ref(db, path), log).catch(() => {});
-    } catch {}
-  });
 }
 
 function scheduleFlush() {

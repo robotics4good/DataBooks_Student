@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { db, ref, push } from "./firebase";
-import dataSyncService from "./services/dataSyncService";
+import { db, ref, push, set, get } from "./firebase";
 import { getSanDiegoIsoString } from './utils/timeUtils';
+import { logAction as batchedLogAction } from "./services/userActionLogger";
 
 const UserLogContext = createContext();
 
@@ -36,14 +36,20 @@ export const UserLogProvider = ({ children }) => {
   // Data sync service is OFF by default - user must manually enable
   useEffect(() => {
     // Don't start sync automatically - let user control it
-    console.log('Data sync service ready - streaming is OFF by default');
+    console.log('UserLog ready - streaming is OFF by default');
     
     // Cleanup on unmount
-    return () => {
-      dataSyncService.stopSync();
-    };
+    return () => {};
   }, []);
 
+  // Helper to get sessionId from Firebase (activeSessionId)
+  const getSessionId = async () => {
+    const sessionIdRef = ref(db, 'activeSessionId');
+    const snapshot = await get(sessionIdRef);
+    return snapshot.exists() ? snapshot.val() : null;
+  };
+
+  // Remove the local logAction and use batchedLogAction for all logging
   // Make logAction async to await the NIST time
   const logAction = async (type, details) => {
     if (!loggingEnabled) return;
@@ -57,36 +63,26 @@ export const UserLogProvider = ({ children }) => {
     };
     setUserActions(prev => {
       const newActions = [...prev, action];
-      dataSyncService.updateUserActions(newActions);
       return newActions;
     });
-    if (dataSyncService.getSyncStatus().isRunning) {
-      const userActivityRef = ref(db, `userActivity`);
-      push(userActivityRef, action);
-      console.log("🔥 Logged locally & sent to Firebase:", action);
-    } else {
-      console.log("📝 Logged locally only (streaming disabled):", action);
+    // Log to sessions/{sessionId}/UserLogs/{userId}/{timestamp}
+    const sessionId = await getSessionId();
+    if (!sessionId) {
+      console.warn('No sessionId available, not logging to Firebase');
+      return;
     }
+    const sanitizedTimestamp = timestamp.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const logPath = `sessions/${sessionId}/UserLogs/${userId}/${sanitizedTimestamp}`;
+    await set(ref(db, logPath), action);
+    console.log("🔥 Logged locally & sent to Firebase:", action);
   };
 
   const startLogging = () => setLoggingEnabled(true);
 
-  // Add manual sync function
-  const performManualSync = () => {
-    return dataSyncService.performManualSync();
-  };
-
-  // Get sync status
-  const getSyncStatus = () => {
-    return dataSyncService.getSyncStatus();
-  };
-
   return (
     <UserLogContext.Provider value={{ 
       userActions, 
-      logAction, 
-      performManualSync,
-      getSyncStatus,
+      logAction: batchedLogAction, 
       startLogging
     }}>
       {children}

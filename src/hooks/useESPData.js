@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { db, ref, get } from '../firebase';
 import { formatSanDiegoTime, timeService, getSanDiegoIsoString, getSanDiegoTimeOnlyString } from '../utils/timeUtils';
-import dataSyncService from '../services/dataSyncService';
 
 /**
  * Custom hook for fetching ESP data from Firebase and transforming it for plots
@@ -35,22 +34,8 @@ export function useESPData(enableRealTime = false) {
         transformedData.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
         
         setEspData(transformedData);
-        
-        // Update ESP data summary in localStorage for sync service
-        const summary = {
-          totalPackets: transformedData.length,
-          uniqueStudents: [...new Set(transformedData.map(item => item.id).filter(Boolean))].length,
-          lastUpdate: getSanDiegoIsoString()
-        };
-        dataSyncService.updateESPDataSummary(summary);
       } else {
         setEspData([]);
-        // Update with empty summary
-        dataSyncService.updateESPDataSummary({
-          totalPackets: 0,
-          uniqueStudents: 0,
-          lastUpdate: getSanDiegoIsoString()
-        });
       }
     } catch (err) {
       console.error("Error processing ESP data:", err);
