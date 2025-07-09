@@ -23,22 +23,6 @@ const LandingPageTemplate = ({ gameRoutes, onNavigate, className }) => {
             </button>
           );
         })}
-        
-        {/* Control Panel Button */}
-        <button
-          onClick={() => onNavigate("/control-panel")}
-          className="dark-red"
-          style={{
-            fontSize: "1.5rem",
-            padding: "0.8rem 1.5rem",
-            cursor: "pointer",
-            borderRadius: "8px",
-            border: "none",
-            marginTop: "1rem"
-          }}
-        >
-          Control Panel
-        </button>
       </div>
     </div>
   );
