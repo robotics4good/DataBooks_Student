@@ -44,16 +44,23 @@ export function initializeCadetFilter(playerNames) {
 }
 
 /**
- * Filter data based on selected variables and cadet filter
+ * Filter data based on selected variables and cadet/sector filter
  * @param {Array} data - Raw data array
  * @param {Array} xVars - Selected X variables
  * @param {Array} yVars - Selected Y variables
- * @param {Object} cadetFilter - Cadet filter object
+ * @param {Object} cadetFilter - Cadet and sector filter object (keys: device IDs, values: boolean)
  * @returns {Array} - Filtered data
  */
 export function filterData(data, xVars, yVars, cadetFilter) {
-  // TODO: implement filtering based on xVars, yVars, cadetFilter
-  return data;
+  if (!Array.isArray(data) || !cadetFilter || Object.keys(cadetFilter).length === 0) return data;
+  // Get all selected device IDs (cadets and/or sectors)
+  const selectedIds = Object.entries(cadetFilter)
+    .filter(([id, selected]) => selected)
+    .map(([id]) => id);
+  // If no filters are selected, return all data
+  if (selectedIds.length === 0) return data;
+  // Only include records with device_id matching a selected filter
+  return data.filter(record => selectedIds.includes(record.device_id));
 }
 
 /**

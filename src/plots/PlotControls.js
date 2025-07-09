@@ -4,6 +4,7 @@ import styles from './PlotComponent.module.css';
 import { playerNames } from './plotConfigs';
 import { isYAllowed, isXAllowed } from './plotUtils';
 import { logAction } from '../services/userActionLogger';
+const sectorIds = ["T1","T2","T3","T4","T5","T6"];
 
 // Helper: check if a variable has any valid pairings
 function hasValidPair(allowedMatrix, varName, isX, variables) {
@@ -23,6 +24,7 @@ const PlotControls = ({
   xVars,
   yVars,
   personFilter,
+  sectorFilter, // new
   allowedMatrix,
   plotLabel,
   onPlotTypeChange,
@@ -31,11 +33,34 @@ const PlotControls = ({
   onHistogramXVariableToggle,
   onPieVariableSelect,
   onPersonFilterToggle,
+  onSectorFilterToggle, // new
   onSelectAllDevices,
   onDeselectAllDevices,
+  onSelectAllSectors, // new
+  onDeselectAllSectors, // new
+  data // <-- add data prop to get current ESP data
 }) => {
+  // Dynamically determine present cadet and sector IDs from ESP data
+  const presentCadetIds = Array.from(new Set(
+    (data || [])
+      .map(d => d.device_id)
+      .filter(id => playerNames.includes(id))
+  ));
+  const presentSectorIds = Array.from(new Set(
+    (data || [])
+      .map(d => d.device_id)
+      .filter(id => sectorIds.includes(id))
+  ));
   // Ensure personFilter is always defined
-  const safePersonFilter = personFilter || playerNames.reduce((acc, name) => ({ ...acc, [name]: false }), {});
+  const safePersonFilter = personFilter || presentCadetIds.reduce((acc, name) => ({ ...acc, [name]: false }), {});
+  // Ensure sectorFilter is always defined
+  const safeSectorFilter = sectorFilter || presentSectorIds.reduce((acc, name) => ({ ...acc, [name]: false }), {});
+  // Show cadet filter only if relevant variable is selected
+  const cadetRelevantVars = ["Infected Cadets", "Healthy Cadets"];
+  const showCadetFilter = xVars.concat(yVars).some(v => cadetRelevantVars.includes(v));
+  // Show sector filter only if relevant variable is selected
+  const sectorRelevantVars = ["Infected Sectors", "Healthy Sectors"];
+  const showSectorFilter = xVars.concat(yVars).some(v => sectorRelevantVars.includes(v));
 
   return (
     <div className={styles.controlsContainer}>
@@ -173,29 +198,56 @@ const PlotControls = ({
         )}
 
         {/* Device filter (always at the bottom of options) */}
-        <div className={styles.deviceFilterContainer}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-            <div className={styles.deviceFilterLabel}>Cadet Filter:</div>
-            <button type="button" onClick={() => { logAction({ type: 'plot_interaction', action: 'cadet_filter_select_all', details: { plotLabel } }); onSelectAllDevices(); }} style={{ fontSize: '0.95rem', padding: '0.2rem 0.7rem', borderRadius: '4px', border: '1px solid var(--panel-border)', background: 'var(--cream-panel)', cursor: 'pointer' }}>Select All</button>
-            <button type="button" onClick={() => { logAction({ type: 'plot_interaction', action: 'cadet_filter_deselect_all', details: { plotLabel } }); onDeselectAllDevices(); }} style={{ fontSize: '0.95rem', padding: '0.2rem 0.7rem', borderRadius: '4px', border: '1px solid var(--panel-border)', background: 'var(--cream-panel)', cursor: 'pointer' }}>Deselect All</button>
+        {showCadetFilter && (
+          <div className={styles.deviceFilterContainer}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+              <div className={styles.deviceFilterLabel}>Cadet Filter:</div>
+              <button type="button" onClick={() => { logAction({ type: 'plot_interaction', action: 'cadet_filter_select_all', details: { plotLabel } }); onSelectAllDevices(); }} style={{ fontSize: '0.95rem', padding: '0.2rem 0.7rem', borderRadius: '4px', border: '1px solid var(--panel-border)', background: 'var(--cream-panel)', cursor: 'pointer' }}>Select All</button>
+              <button type="button" onClick={() => { logAction({ type: 'plot_interaction', action: 'cadet_filter_deselect_all', details: { plotLabel } }); onDeselectAllDevices(); }} style={{ fontSize: '0.95rem', padding: '0.2rem 0.7rem', borderRadius: '4px', border: '1px solid var(--panel-border)', background: 'var(--cream-panel)', cursor: 'pointer' }}>Deselect All</button>
+            </div>
+            <div className={styles.deviceFilterOptions}>
+              {presentCadetIds.map(name => (
+                <label key={name} className={styles.deviceFilterOption}>
+                  <input
+                    type="checkbox"
+                    checked={!!safePersonFilter[name]}
+                    onChange={() => {
+                      logAction({ type: 'plot_interaction', action: 'cadet_filter_toggled', details: { plotLabel, cadet: name, selected: !safePersonFilter[name] } });
+                      onPersonFilterToggle(name);
+                    }}
+                    className={styles.deviceFilterCheckbox}
+                  />
+                  {name}
+                </label>
+              ))}
+            </div>
           </div>
-          <div className={styles.deviceFilterOptions}>
-            {playerNames.map(name => (
-              <label key={name} className={styles.deviceFilterOption}>
-                <input
-                  type="checkbox"
-                  checked={!!safePersonFilter[name]}
-                  onChange={() => {
-                    logAction({ type: 'plot_interaction', action: 'cadet_filter_toggled', details: { plotLabel, cadet: name, selected: !safePersonFilter[name] } });
-                    onPersonFilterToggle(name);
-                  }}
-                  className={styles.deviceFilterCheckbox}
-                />
-                {name}
-              </label>
-            ))}
+        )}
+        {showSectorFilter && (
+          <div className={styles.deviceFilterContainer}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+              <div className={styles.deviceFilterLabel}>Sector Filter:</div>
+              <button type="button" onClick={() => { logAction({ type: 'plot_interaction', action: 'sector_filter_select_all', details: { plotLabel } }); onSelectAllSectors(); }} style={{ fontSize: '0.95rem', padding: '0.2rem 0.7rem', borderRadius: '4px', border: '1px solid var(--panel-border)', background: 'var(--cream-panel)', cursor: 'pointer' }}>Select All</button>
+              <button type="button" onClick={() => { logAction({ type: 'plot_interaction', action: 'sector_filter_deselect_all', details: { plotLabel } }); onDeselectAllSectors(); }} style={{ fontSize: '0.95rem', padding: '0.2rem 0.7rem', borderRadius: '4px', border: '1px solid var(--panel-border)', background: 'var(--cream-panel)', cursor: 'pointer' }}>Deselect All</button>
+            </div>
+            <div className={styles.deviceFilterOptions}>
+              {presentSectorIds.map(name => (
+                <label key={name} className={styles.deviceFilterOption}>
+                  <input
+                    type="checkbox"
+                    checked={!!safeSectorFilter[name]}
+                    onChange={() => {
+                      logAction({ type: 'plot_interaction', action: 'sector_filter_toggled', details: { plotLabel, sector: name, selected: !safeSectorFilter[name] } });
+                      onSectorFilterToggle(name);
+                    }}
+                    className={styles.deviceFilterCheckbox}
+                  />
+                  {name}
+                </label>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
