@@ -1,5 +1,7 @@
 // timeUtils.js - Utility functions for NIST time API and San Diego timezone handling
 
+import { toZonedTime, format as formatTz } from 'date-fns-tz';
+
 /**
  * Fetch current time from NIST time servers
  * Uses the official NIST time API
@@ -50,74 +52,9 @@ export async function getNistTime() {
     throw new Error('All NIST servers failed');
   } catch (error) {
     console.warn('NIST time fetch failed, using local time:', error.message);
-    return new Date().toISOString();
+    // Always return San Diego time as ISO string with offset, never UTC
+    return formatTz(new Date(), "yyyy-MM-dd'T'HH:mm:ssXXX", { timeZone: 'America/Los_Angeles' });
   }
-}
-
-/**
- * Convert UTC timestamp to San Diego time (Pacific Time)
- * @param {string|Date} utcTimestamp - UTC timestamp
- * @returns {Date} - Date object in San Diego timezone
- */
-export function convertToSanDiegoTime(utcTimestamp) {
-  const date = new Date(utcTimestamp);
-  
-  // Convert to San Diego time (Pacific Time)
-  return new Date(date.toLocaleString("en-US", {
-    timeZone: "America/Los_Angeles"
-  }));
-}
-
-/**
- * Format timestamp for display in San Diego time
- * @param {string|Date} timestamp - UTC timestamp
- * @param {Object} options - Formatting options
- * @returns {string} - Formatted time string
- */
-export function formatSanDiegoTime(timestamp, options = {}) {
-  const defaultOptions = {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    timeZoneName: 'short'
-  };
-
-  const date = new Date(timestamp);
-  
-  return date.toLocaleString("en-US", {
-    timeZone: "America/Los_Angeles",
-    ...defaultOptions,
-    ...options
-  });
-}
-
-/**
- * Format time only (without date) in San Diego time
- * @param {string|Date} timestamp - UTC timestamp
- * @returns {string} - Time string in San Diego timezone
- */
-export function formatSanDiegoTimeOnly(timestamp) {
-  const date = new Date(timestamp);
-  
-  return date.toLocaleTimeString("en-US", {
-    timeZone: "America/Los_Angeles",
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  });
-}
-
-/**
- * Get current San Diego time as ISO string
- * @returns {Promise<string>} - Current time in San Diego timezone as ISO string
- */
-export async function getCurrentSanDiegoTime() {
-  const nistTime = await getNistTime();
-  const sanDiegoDate = convertToSanDiegoTime(nistTime);
-  return sanDiegoDate.toISOString();
 }
 
 /**
@@ -125,14 +62,10 @@ export async function getCurrentSanDiegoTime() {
  * @returns {Object} - Timezone information
  */
 export function getSanDiegoTimezoneInfo() {
-  const now = new Date();
-  const sanDiegoTime = new Date(now.toLocaleString("en-US", {
-    timeZone: "America/Los_Angeles"
-  }));
+  const now = toZonedTime(new Date(), 'America/Los_Angeles');
+  const sanDiegoTime = toZonedTime(new Date(), "America/Los_Angeles");
   
-  const utcTime = new Date(now.toLocaleString("en-US", {
-    timeZone: "UTC"
-  }));
+  const utcTime = toZonedTime(new Date(), "UTC");
   
   const offsetMs = sanDiegoTime.getTime() - utcTime.getTime();
   const offsetHours = offsetMs / (1000 * 60 * 60);
@@ -158,8 +91,8 @@ export function isSanDiegoDST() {
 // --- TimeService Singleton for 15-min NIST/US Pacific time caching ---
 class TimeService {
   constructor() {
-    this.nistTime = null; // Date object
-    this.lastSync = null; // Date object
+    this.sanDiegoAnchor = null; // Date object in San Diego time
+    this.lastSync = null; // Date object (system time at last sync)
     this.syncInterval = null;
     this.isSyncing = false;
     this.listeners = [];
@@ -169,13 +102,15 @@ class TimeService {
   async fetchNistTime() {
     this.isSyncing = true;
     try {
-      const nistTimeStr = await getNistTime();
-      this.nistTime = convertToSanDiegoTime(nistTimeStr);
+      const nistTimeStr = await getNistTime(); // UTC string
+      // Convert to San Diego time immediately and store as Date
+      const utcDate = new Date(nistTimeStr);
+      this.sanDiegoAnchor = toZonedTime(utcDate, 'America/Los_Angeles');
       this.lastSync = new Date();
       this.notifyListeners();
     } catch (err) {
-      // fallback: use local time
-      this.nistTime = convertToSanDiegoTime(new Date().toISOString());
+      // fallback: use local time in San Diego zone
+      this.sanDiegoAnchor = toZonedTime(new Date(), 'America/Los_Angeles');
       this.lastSync = new Date();
       this.notifyListeners();
     } finally {
@@ -190,12 +125,11 @@ class TimeService {
     this.syncInterval = setInterval(() => this.fetchNistTime(), 600000);
   }
 
-  getCurrentTime() {
-    if (!this.nistTime || !this.lastSync) return convertToSanDiegoTime(new Date().toISOString());
+  getSanDiegoTime() {
+    if (!this.sanDiegoAnchor || !this.lastSync) return toZonedTime(new Date(), 'America/Los_Angeles');
     const now = new Date();
     const elapsed = now.getTime() - this.lastSync.getTime();
-    // Add elapsed ms to the base San Diego time
-    return new Date(this.nistTime.getTime() + elapsed);
+    return new Date(this.sanDiegoAnchor.getTime() + elapsed);
   }
 
   // Optional: allow components to listen for time updates
@@ -206,8 +140,24 @@ class TimeService {
     this.listeners = this.listeners.filter(l => l !== listener);
   }
   notifyListeners() {
-    this.listeners.forEach(l => l(this.getCurrentTime()));
+    this.listeners.forEach(l => l(this.getSanDiegoTime()));
   }
 }
 
-export const timeService = new TimeService(); 
+export const timeService = new TimeService();
+
+// Centralized function to get current NIST-anchored San Diego time as Luxon DateTime
+export function getSanDiegoTime() {
+  return timeService.getSanDiegoTime();
+}
+
+// Utility to get NIST-anchored San Diego time as ISO string with offset
+export function getSanDiegoIsoString() {
+  // Format as ISO string with offset, e.g. 2024-06-01T05:00:00-07:00
+  return formatTz(getSanDiegoTime(), "yyyy-MM-dd'T'HH:mm:ssXXX", { timeZone: 'America/Los_Angeles' });
+} 
+
+// Optionally, provide a time-only formatter for plots
+export function getSanDiegoTimeOnlyString(date) {
+  return formatTz(date, 'HH:mm:ss', { timeZone: 'America/Los_Angeles' });
+} 

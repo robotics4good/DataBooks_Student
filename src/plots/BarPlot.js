@@ -1,7 +1,7 @@
 // plots/bar_plot.js - Game-controlled data access
 import React from 'react';
 import { ResponsiveBar } from "@nivo/bar";
-import { formatSanDiegoTimeOnly } from '../utils/timeUtils';
+import { getSanDiegoTimeOnlyString } from '../utils/timeUtils';
 
 const BarPlot = ({ data = [] }) => {
   // Transform data for bar plot if provided
@@ -9,17 +9,12 @@ const BarPlot = ({ data = [] }) => {
     if (!data || !data.length) return [];
     
     // Transform ESP data into bar chart format
-    const timeSlots = {};
-    
-    data.forEach(item => {
-      const time = formatSanDiegoTimeOnly(item.timestamp);
-      timeSlots[time] = (timeSlots[time] || 0) + 1;
-    });
-    
-    return Object.entries(timeSlots).map(([time, count]) => ({
-      time: time,
-      interactions: count
+    const formattedData = data.map(item => ({
+      x: getSanDiegoTimeOnlyString(new Date(item.timestamp)),
+      y: item.interaction || 0
     }));
+    
+    return formattedData;
   };
 
   const barData = getBarData();
@@ -50,8 +45,8 @@ const BarPlot = ({ data = [] }) => {
     <div style={{ height: "100%", width: "100%" }}>
       <ResponsiveBar
         data={barData}
-        keys={["interactions"]}
-        indexBy="time"
+        keys={["y"]}
+        indexBy="x"
         margin={{ top: 60, right: 90, bottom: 90, left: 90 }}
         padding={0.3}
         groupMode="grouped"

@@ -1,7 +1,7 @@
 // plots/line_plot.js - Game-controlled data access
 import React from 'react';
 import { ResponsiveLine } from "@nivo/line";
-import { formatSanDiegoTimeOnly } from '../utils/timeUtils';
+import { getSanDiegoTimeOnlyString } from '../utils/timeUtils';
 
 const LinePlot = ({ data = [] }) => {
   // Transform data for line plot if provided
@@ -10,7 +10,7 @@ const LinePlot = ({ data = [] }) => {
     
     // Transform ESP data into line plot format
     const transformedData = data.map(item => ({
-      x: formatSanDiegoTimeOnly(item.timestamp),
+      x: getSanDiegoTimeOnlyString(new Date(item.timestamp)),
       y: item.interaction || 0
     }));
     

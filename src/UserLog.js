@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db, ref, push } from "./firebase";
 import dataSyncService from "./services/dataSyncService";
-import { timeService } from './utils/timeUtils';
+import { getSanDiegoIsoString } from './utils/timeUtils';
 
 const UserLogContext = createContext();
 
@@ -47,7 +47,7 @@ export const UserLogProvider = ({ children }) => {
   // Make logAction async to await the NIST time
   const logAction = async (type, details) => {
     if (!loggingEnabled) return;
-    const timestamp = timeService.getCurrentTime().toISOString();
+    const timestamp = getSanDiegoIsoString();
     const cleanDetails = details ?? "";
     const action = {
       id: userId,

@@ -1,7 +1,6 @@
 // dataSyncService.js - Service for syncing journal and user action data to Firebase
-import { getCurrentSanDiegoTime } from '../utils/timeUtils';
+import { getSanDiegoIsoString, getSanDiegoTime } from '../utils/timeUtils';
 import { db, ref, push, set } from '../firebase';
-import { timeService } from '../utils/timeUtils';
 
 class DataSyncService {
   constructor() {
@@ -82,10 +81,10 @@ class DataSyncService {
       return null;
     }
     
-    const lastSync = new Date(this.lastSyncTime);
-    const nextSync = new Date(lastSync.getTime() + 60000); // Add 1 minute
-    const now = new Date();
-    const diffMs = nextSync.getTime() - now.getTime();
+    const lastSync = this.lastSyncTime ? getSanDiegoTime().set({ millisecond: 0 }) : null;
+    const nextSync = lastSync ? lastSync.plus({ minutes: 1 }) : null;
+    const now = getSanDiegoTime();
+    const diffMs = nextSync ? nextSync.diff(now).milliseconds : 0;
     
     if (diffMs <= 0) {
       return 'Due now';
@@ -101,7 +100,7 @@ class DataSyncService {
   async performSync() {
     try {
       // Get current timestamp
-      const syncTimestamp = timeService.getCurrentTime();
+      const syncTimestamp = getSanDiegoIsoString();
       // Get all data to sync
       const userActions = this.getUserActions();
       const journalData = this.getJournalData();
@@ -229,15 +228,15 @@ class DataSyncService {
       if (stored) {
         return {
           answers: JSON.parse(stored),
-          timestamp: timeService.getCurrentTime().toISOString()
+          timestamp: getSanDiegoIsoString()
         };
       }
       
       // Fallback: return empty object
-      return { answers: {}, timestamp: timeService.getCurrentTime().toISOString() };
+      return { answers: {}, timestamp: getSanDiegoIsoString() };
     } catch (error) {
       console.warn('Failed to get journal data:', error);
-      return { answers: {}, timestamp: timeService.getCurrentTime().toISOString() };
+      return { answers: {}, timestamp: getSanDiegoIsoString() };
     }
   }
 
@@ -256,14 +255,14 @@ class DataSyncService {
       return {
         totalPackets: 0,
         uniqueStudents: 0,
-        lastUpdate: timeService.getCurrentTime().toISOString()
+        lastUpdate: getSanDiegoIsoString()
       };
     } catch (error) {
       console.warn('Failed to get ESP data summary:', error);
       return {
         totalPackets: 0,
         uniqueStudents: 0,
-        lastUpdate: timeService.getCurrentTime().toISOString()
+        lastUpdate: getSanDiegoIsoString()
       };
     }
   }
@@ -283,7 +282,7 @@ class DataSyncService {
         screenResolution: `${window.screen.width}x${window.screen.height}`,
         windowSize: `${window.innerWidth}x${window.innerHeight}`
       },
-      timestamp: timeService.getCurrentTime().toISOString()
+      timestamp: getSanDiegoIsoString()
     };
   }
 
@@ -293,7 +292,7 @@ class DataSyncService {
   getSessionId() {
     let sessionId = localStorage.getItem('sessionId');
     if (!sessionId) {
-      sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      sessionId = `session_${getSanDiegoTime().toMillis()}_${Math.random().toString(36).substr(2, 9)}`;
       localStorage.setItem('sessionId', sessionId);
     }
     return sessionId;
@@ -333,7 +332,7 @@ class DataSyncService {
       await set(newSyncRef, {
         ...data,
         firebaseKey: newSyncRef.key,
-        uploadedAt: timeService.getCurrentTime().toISOString()
+        uploadedAt: getSanDiegoIsoString()
       });
       
       return newSyncRef.key;
@@ -350,7 +349,7 @@ class DataSyncService {
     try {
       localStorage.setItem('espDataSummary', JSON.stringify({
         ...summary,
-        lastUpdate: timeService.getCurrentTime().toISOString()
+        lastUpdate: getSanDiegoIsoString()
       }));
     } catch (error) {
       console.warn('Failed to update ESP data summary:', error);

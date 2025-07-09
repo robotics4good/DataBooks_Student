@@ -1,7 +1,7 @@
 // espSimulator.js - Browser-based ESP device simulation utility
 
 import { db, ref, push, set } from '../firebase';
-import { timeService } from './timeUtils';
+import { getSanDiegoTime, getSanDiegoIsoString } from './timeUtils';
 
 class ESPSimulator {
   constructor() {
@@ -19,15 +19,15 @@ class ESPSimulator {
     
     return {
       id: deviceId,
-      timestamp: timeService.getCurrentTime().toISOString(),
+      timestamp: getSanDiegoIsoString(),
       buttonA: Math.random() > 0.7 ? 1 : 0,
       buttonB: Math.random() > 0.8 ? 1 : 0,
       status: Math.random(),
       beaconArray: Math.random() > 0.9 ? 1 : 0,
       totalButtons: Math.floor(Math.random() * 3),
       hasInteraction: Math.random() > 0.8,
-      receivedAt: timeService.getCurrentTime().toISOString(),
-      sessionId: `browser-session-${timeService.getCurrentTime().getTime()}`
+      receivedAt: getSanDiegoIsoString(),
+      sessionId: `browser-session-${getSanDiegoTime().toMillis()}`
     };
   }
 
@@ -149,7 +149,7 @@ class ESPSimulator {
     const buttonBPressed = Math.random() > 0.9;
     
     // Simulate status changes over time
-    const baseStatus = Math.sin(timeService.getCurrentTime().getTime() / 10000) * 0.5 + 0.5; // Oscillating pattern
+    const baseStatus = Math.sin(getSanDiegoTime().getTime() / 10000) * 0.5 + 0.5; // Oscillating pattern
     const noise = (Math.random() - 0.5) * 0.2; // Add some noise
     const status = Math.max(0, Math.min(1, baseStatus + noise));
     
@@ -158,15 +158,15 @@ class ESPSimulator {
     
     return {
       id: deviceId,
-      timestamp: timeService.getCurrentTime().toISOString(),
+      timestamp: getSanDiegoIsoString(),
       buttonA: buttonAPressed ? 1 : 0,
       buttonB: buttonBPressed ? 1 : 0,
       status: status,
       beaconArray: beaconActive ? 1 : 0,
       totalButtons: (buttonAPressed ? 1 : 0) + (buttonBPressed ? 1 : 0),
       hasInteraction: buttonAPressed || buttonBPressed || beaconActive,
-      receivedAt: timeService.getCurrentTime().toISOString(),
-      sessionId: `browser-session-${timeService.getCurrentTime().getTime()}`
+      receivedAt: getSanDiegoIsoString(),
+      sessionId: `browser-session-${getSanDiegoTime().toMillis()}`
     };
   }
 

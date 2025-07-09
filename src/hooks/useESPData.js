@@ -1,7 +1,7 @@
 // useESPData.js - Custom hook for fetching and transforming ESP data from Firebase
 import { useState, useEffect } from 'react';
 import { db, ref, get } from '../firebase';
-import { formatSanDiegoTimeOnly, formatSanDiegoTime, timeService } from '../utils/timeUtils';
+import { formatSanDiegoTime, timeService, getSanDiegoIsoString, getSanDiegoTimeOnlyString } from '../utils/timeUtils';
 import dataSyncService from '../services/dataSyncService';
 
 /**
@@ -40,7 +40,7 @@ export function useESPData(enableRealTime = false) {
         const summary = {
           totalPackets: transformedData.length,
           uniqueStudents: [...new Set(transformedData.map(item => item.id).filter(Boolean))].length,
-          lastUpdate: timeService.getCurrentTime().toISOString()
+          lastUpdate: getSanDiegoIsoString()
         };
         dataSyncService.updateESPDataSummary(summary);
       } else {
@@ -49,7 +49,7 @@ export function useESPData(enableRealTime = false) {
         dataSyncService.updateESPDataSummary({
           totalPackets: 0,
           uniqueStudents: 0,
-          lastUpdate: timeService.getCurrentTime().toISOString()
+          lastUpdate: getSanDiegoIsoString()
         });
       }
     } catch (err) {
@@ -75,7 +75,7 @@ export function useESPData(enableRealTime = false) {
         return [{
           id: 'ESP Data',
           data: espData.map(item => ({
-            x: xVariable === "timestamp" ? formatSanDiegoTimeOnly(item.timestamp) : item[xVariable],
+            x: xVariable === "timestamp" ? getSanDiegoTimeOnlyString(new Date(item.timestamp)) : item[xVariable],
             y: item[yVariable] || 0
           }))
         }];

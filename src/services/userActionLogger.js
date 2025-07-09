@@ -1,4 +1,5 @@
 import { db, ref, set, get } from '../firebase';
+import { getSanDiegoIsoString } from '../utils/timeUtils';
 
 // Sanitize for Firebase keys
 function sanitize(str) {
@@ -85,7 +86,7 @@ function logAction({ type, action, details }) {
     const userId = getUserId();
     const sessionId = getSessionId();
     if (!userId || !sessionId) return;
-    const timestamp = new Date().toISOString();
+    const timestamp = getSanDiegoIsoString();
     const log = {
       type,
       action,

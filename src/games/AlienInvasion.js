@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { useESPData } from "../hooks/useESPData";
 import { useUserLog } from "../UserLog";
 import PlotComponent from "../plots/PlotComponent";
-import { timeService } from '../utils/timeUtils';
+import { getSanDiegoTime } from '../utils/timeUtils';
 
 // @param {string} sessionId - Unique identifier for this game session (passed from parent)
 const AlienInvasion = () => {
@@ -39,7 +39,7 @@ const AlienInvasion = () => {
   useEffect(() => {
     if (gameState === 'playing' && espData.length > 0) {
       const newShips = espData.slice(-5).map((data, index) => ({
-        id: `alien_${timeService.getCurrentTime().getTime()}_${index}`,
+        id: `alien_${getSanDiegoTime().toMillis()}_${index}`,
         x: Math.random() * 80 + 10,
         y: Math.random() * 80 + 10,
         intensity: data.status || 0,
