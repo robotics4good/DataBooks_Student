@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import LandingPage from "./LandingPage";
 import LoginPage from "./LoginPage";
@@ -23,6 +23,11 @@ const GAME_CONFIG = {
 };
 
 const App = () => {
+  useEffect(() => {
+    if (window.location.pathname !== "/") {
+      window.location.replace("/");
+    }
+  }, []);
   return (
     <UserLogProvider>
       <div className="App">
