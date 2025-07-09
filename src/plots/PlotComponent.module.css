@@ -10,7 +10,7 @@
   /* border: 2px solid var(--divider-green-light); */
   border-radius: 8px;
   min-width: 0;
-  overflow: hidden;
+  overflow: auto;
   max-width: 100%;
   flex: 1 1 auto;
 }
