@@ -1,4 +1,5 @@
 import React from 'react';
+import { logAction, flushLogs } from '../services/userActionLogger';
 
 const BUTTON_WIDTH = 200;
 const DUAL_LABEL = 'Go Dual Screen';

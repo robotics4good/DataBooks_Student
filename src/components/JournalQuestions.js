@@ -1,6 +1,7 @@
 import React, { useRef, useLayoutEffect, useState } from 'react';
 import { useJournal } from "../JournalContext";
 import { db, ref, set, get } from "../firebase";
+import { logAction } from "../services/userActionLogger";
 
 // Journal questions configuration
 export const JOURNAL_QUESTIONS = [
@@ -45,7 +46,7 @@ const AutoResizingTextarea = ({ value, onChange, onBlur, ...props }) => {
 };
 
 // Question box component
-export const QuestionBox = ({ question, index, logAction, styles = {} }) => {
+export const QuestionBox = ({ question, index, logAction: _logAction, styles = {}, journalNumber }) => {
   const { journalAnswers, setJournalAnswer } = useJournal();
   const answer = journalAnswers[index] || "";
   
@@ -53,10 +54,22 @@ export const QuestionBox = ({ question, index, logAction, styles = {} }) => {
     setJournalAnswer(index, e.target.value);
   };
 
-  const handleAnswerBlur = (e) => {
+  const handleFocus = () => {
+    logAction({
+      type: "journal_entry",
+      action: "click_on",
+      details: { journalNumber, questionIndex: index }
+    });
+  };
+
+  const handleBlur = (e) => {
     const value = e.target.value;
     const wordCount = value.trim() ? value.trim().split(/\s+/).length : 0;
-    logAction(`journal_entry`, `Question ${index + 1} word_count: ${wordCount}`);
+    logAction({
+      type: "journal_entry",
+      action: "click_off",
+      details: { journalNumber, questionIndex: index, wordCount }
+    });
   };
 
   const defaultStyles = {
@@ -95,7 +108,8 @@ export const QuestionBox = ({ question, index, logAction, styles = {} }) => {
         placeholder="Your answer..."
         value={answer}
         onChange={handleAnswerChange}
-        onBlur={handleAnswerBlur}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
         style={mergedStyles.textarea}
       />
     </div>
@@ -138,7 +152,7 @@ const ROUND_QUESTIONS = [
   ]
 ];
 
-export const JournalQuestions = ({ logAction, styles = {}, id }) => {
+export const JournalQuestions = ({ logAction: _logAction, styles = {}, id }) => {
   const { journalAnswers } = useJournal();
   const [submitting, setSubmitting] = useState([false, false, false]);
   const [showSuccess, setShowSuccess] = useState([false, false, false]);
@@ -239,10 +253,33 @@ export const JournalQuestions = ({ logAction, styles = {}, id }) => {
                 index={offset + idx}
                 logAction={logAction}
                 styles={styles}
+                journalNumber={roundIdx + 1}
               />
             ))}
             <button
-              onClick={() => handleSubmit(roundIdx + 1)}
+              onClick={async () => {
+                await handleSubmit(roundIdx + 1);
+                // Log submit action
+                const answeredCount = questions.filter((_, i) => {
+                  const ans = journalAnswers[offset + i];
+                  return ans && ans.trim().length > 0;
+                }).length;
+                const totalQuestions = questions.length;
+                const totalWords = questions.reduce((sum, _, i) => {
+                  const ans = journalAnswers[offset + i] || "";
+                  return sum + (ans.trim() ? ans.trim().split(/\s+/).length : 0);
+                }, 0);
+                logAction({
+                  type: "journal_entry",
+                  action: "submit",
+                  details: {
+                    journalNumber: roundIdx + 1,
+                    answeredCount,
+                    totalQuestions,
+                    totalWords
+                  }
+                });
+              }}
               disabled={submitting[roundIdx]}
               style={{
                 display: 'block',

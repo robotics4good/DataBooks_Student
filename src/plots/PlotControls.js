@@ -3,6 +3,7 @@ import React from 'react';
 import styles from './PlotComponent.module.css';
 import { playerNames } from './plotConfigs';
 import { isYAllowed, isXAllowed } from './plotUtils';
+import { logAction } from '../services/userActionLogger';
 
 // Helper: check if a variable has any valid pairings
 function hasValidPair(allowedMatrix, varName, isX, variables) {
@@ -46,7 +47,10 @@ const PlotControls = ({
         <div className={styles.plotTypeSelector}>
           <select
             value={plotType}
-            onChange={(e) => onPlotTypeChange(e.target.value)}
+            onChange={(e) => {
+              logAction({ type: 'plot_interaction', action: 'type_changed', details: { plotLabel, newType: e.target.value } });
+              onPlotTypeChange(e.target.value);
+            }}
             className={styles.plotTypeSelect}
           >
             <option value="line">Line Plot</option>
@@ -76,7 +80,10 @@ const PlotControls = ({
                         type="checkbox"
                         checked={xVars.includes(v)}
                         disabled={disabled}
-                        onChange={() => onXVariableToggle(v)}
+                        onChange={() => {
+                          logAction({ type: 'plot_interaction', action: 'x_variable_toggled', details: { plotLabel, variable: v, selected: !xVars.includes(v) } });
+                          onXVariableToggle(v);
+                        }}
                         className={styles.variableCheckbox}
                       />
                       {v}
@@ -98,7 +105,10 @@ const PlotControls = ({
                         type="checkbox"
                         checked={yVars.includes(v)}
                         disabled={disabled}
-                        onChange={() => onYVariableToggle(v)}
+                        onChange={() => {
+                          logAction({ type: 'plot_interaction', action: 'y_variable_toggled', details: { plotLabel, variable: v, selected: !yVars.includes(v) } });
+                          onYVariableToggle(v);
+                        }}
                         className={styles.variableCheckbox}
                       />
                       {v}
@@ -124,7 +134,10 @@ const PlotControls = ({
                     type="checkbox"
                     checked={xVars.includes(v)}
                     disabled={yVars.length > 0 && !isXAllowed(allowedMatrix, yVars[0], v)}
-                    onChange={() => onHistogramXVariableToggle(v)}
+                    onChange={() => {
+                      logAction({ type: 'plot_interaction', action: 'histogram_x_variable_toggled', details: { plotLabel, variable: v, selected: !xVars.includes(v) } });
+                      onHistogramXVariableToggle(v);
+                    }}
                     className={styles.variableCheckbox}
                   />
                   {v}
@@ -146,7 +159,10 @@ const PlotControls = ({
                     type="radio"
                     name={`pie-var-${plotLabel}`}
                     checked={xVars.includes(v)}
-                    onChange={() => onPieVariableSelect(v)}
+                    onChange={() => {
+                      logAction({ type: 'plot_interaction', action: 'pie_variable_selected', details: { plotLabel, variable: v } });
+                      onPieVariableSelect(v);
+                    }}
                     className={styles.variableRadio}
                   />
                   {v}
@@ -160,8 +176,8 @@ const PlotControls = ({
         <div className={styles.deviceFilterContainer}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
             <div className={styles.deviceFilterLabel}>Cadet Filter:</div>
-            <button type="button" onClick={onSelectAllDevices} style={{ fontSize: '0.95rem', padding: '0.2rem 0.7rem', borderRadius: '4px', border: '1px solid var(--panel-border)', background: 'var(--cream-panel)', cursor: 'pointer' }}>Select All</button>
-            <button type="button" onClick={onDeselectAllDevices} style={{ fontSize: '0.95rem', padding: '0.2rem 0.7rem', borderRadius: '4px', border: '1px solid var(--panel-border)', background: 'var(--cream-panel)', cursor: 'pointer' }}>Deselect All</button>
+            <button type="button" onClick={() => { logAction({ type: 'plot_interaction', action: 'cadet_filter_select_all', details: { plotLabel } }); onSelectAllDevices(); }} style={{ fontSize: '0.95rem', padding: '0.2rem 0.7rem', borderRadius: '4px', border: '1px solid var(--panel-border)', background: 'var(--cream-panel)', cursor: 'pointer' }}>Select All</button>
+            <button type="button" onClick={() => { logAction({ type: 'plot_interaction', action: 'cadet_filter_deselect_all', details: { plotLabel } }); onDeselectAllDevices(); }} style={{ fontSize: '0.95rem', padding: '0.2rem 0.7rem', borderRadius: '4px', border: '1px solid var(--panel-border)', background: 'var(--cream-panel)', cursor: 'pointer' }}>Deselect All</button>
           </div>
           <div className={styles.deviceFilterOptions}>
             {playerNames.map(name => (
@@ -169,7 +185,10 @@ const PlotControls = ({
                 <input
                   type="checkbox"
                   checked={!!safePersonFilter[name]}
-                  onChange={() => onPersonFilterToggle(name)}
+                  onChange={() => {
+                    logAction({ type: 'plot_interaction', action: 'cadet_filter_toggled', details: { plotLabel, cadet: name, selected: !safePersonFilter[name] } });
+                    onPersonFilterToggle(name);
+                  }}
                   className={styles.deviceFilterCheckbox}
                 />
                 {name}

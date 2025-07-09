@@ -5,6 +5,7 @@ import LoginPage from "./LoginPage";
 import GamePage from "./GamePage";
 import { UserLogProvider } from "./UserLog";
 import "./App.css";
+import { logAction } from "./services/userActionLogger";
 
 // Game configuration - centralized and maintainable
 const GAME_CONFIG = {

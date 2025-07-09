@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Navigate } from "react-router-dom";
 import SingleScreenLayout from "./SingleScreenLayout";
-import DualScreenLayout from "./GameLayout";
+import GameLayout from "./GameLayout";
 import { useUserLog } from "./UserLog";
 import { JournalProvider } from "./JournalContext";
+import { logAction as globalLogAction } from "./services/userActionLogger";
 
 const GamePage = ({ gameConfig }) => {
   const { gameKey } = useParams();
@@ -29,20 +30,26 @@ const GamePage = ({ gameConfig }) => {
     navigate('/');
   };
 
-  const handleToggleLayout = () => {
+  // IMPORTANT: All layout toggles must go through handleToggleLayout for logging. Do NOT call setDualScreen directly elsewhere.
+  const handleToggleLayout = (source) => {
     const newLayout = !dualScreen;
     setDualScreen(newLayout);
+    globalLogAction({
+      type: "navigation",
+      action: "toggle_screen",
+      details: { to: newLayout ? "dual" : "single", triggeredFrom: source }
+    });
     logAction(`Switched to ${newLayout ? 'dual' : 'single'} screen layout`);
   };
 
   return (
     <JournalProvider>
       {dualScreen ? (
-        <DualScreenLayout
+        <GameLayout
           selectedGame={currentGame}
           handleBackToGames={handleBackToGames}
           playerNames={gameConfig.playerNames}
-          onToggleLayout={handleToggleLayout}
+          onToggleLayout={() => handleToggleLayout('DualScreenLayout')}
           isDualScreen={true}
         />
       ) : (
@@ -50,7 +57,7 @@ const GamePage = ({ gameConfig }) => {
           selectedGame={currentGame}
           handleBackToGames={handleBackToGames}
           playerNames={gameConfig.playerNames}
-          onToggleLayout={handleToggleLayout}
+          onToggleLayout={() => handleToggleLayout('SingleScreenLayout')}
           isDualScreen={false}
         />
       )}

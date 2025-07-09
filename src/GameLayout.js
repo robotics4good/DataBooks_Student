@@ -9,6 +9,7 @@ import { useUserLog } from "./UserLog";
 import { useJournal } from "./JournalContext";
 import { JournalQuestions } from "./components/JournalQuestions";
 import TopBar from './components/TopBar';
+import { logAction } from "./services/userActionLogger";
 
 const MIN_WIDTH_PERCENT = 30;
 const MAX_WIDTH_PERCENT = 50;
@@ -71,6 +72,14 @@ const styles = {
     overflow: 'auto',
     marginBottom: 0,
   },
+  plotContainer: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: '340px',
+    paddingBottom: 0,
+    marginBottom: '2rem',
+    boxSizing: 'border-box'
+  },
   resizer: (isDragging) => ({
     width: '6px',
     cursor: 'col-resize',
@@ -132,11 +141,13 @@ const GameLayout = ({ selectedGame, handleBackToGames, onToggleLayout, playerNam
 
   const handleMouseDown = (e) => {
     setIsDragging(true);
+    logAction({ type: "navigation", action: "resize_panel_start", details: { leftWidth } });
     e.preventDefault();
   };
 
   const handleMouseUp = () => {
     setIsDragging(false);
+    logAction({ type: "navigation", action: "resize_panel_end", details: { leftWidth } });
   };
 
   const handleMouseMove = (e) => {
@@ -144,6 +155,7 @@ const GameLayout = ({ selectedGame, handleBackToGames, onToggleLayout, playerNam
     const newLeftWidth = (e.clientX / window.innerWidth) * 100;
     const clampedWidth = Math.max(MIN_WIDTH_PERCENT, Math.min(newLeftWidth, MAX_WIDTH_PERCENT));
     setLeftWidth(clampedWidth);
+    logAction({ type: "navigation", action: "resize_panel", details: { leftWidth: clampedWidth } });
   };
 
   useLayoutEffect(() => {
@@ -163,8 +175,11 @@ const GameLayout = ({ selectedGame, handleBackToGames, onToggleLayout, playerNam
       <TopBar
         gameName={getGameDisplayName(selectedGame)}
         cadetName={typeof window !== 'undefined' ? localStorage.getItem('selectedPlayer') : ''}
-        onBack={handleBackToGames}
-        onToggleView={onToggleLayout}
+        onBack={() => {
+          logAction({ type: "navigation", action: "back_to_games", details: {} });
+          handleBackToGames();
+        }}
+        onToggleView={() => onToggleLayout('DualScreenLayout')}
         toggleLabel={isDualScreen ? 'Go Single Screen' : 'Go Dual Screen'}
       />
       {/* Dual Panel Layout */}
@@ -180,9 +195,11 @@ const GameLayout = ({ selectedGame, handleBackToGames, onToggleLayout, playerNam
         >
           <div style={styles.resizerHandle} />
         </div>
-        {/* Right: DataPlots (only one plot) */}
+        {/* Right: DataPlots */}
         <div style={styles.rightPanel}>
-          <PlotComponent plotLabel="DataPlots" data={[]} logAction={logAction} />
+          <div style={styles.plotContainer}>
+            <PlotComponent plotLabel="DataPlots" data={[]} logAction={logAction} />
+          </div>
         </div>
       </div>
     </div>

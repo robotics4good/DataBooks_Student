@@ -9,6 +9,7 @@ import PlotComponent from "./plots/PlotComponent";
 import { useJournal } from "./JournalContext";
 import { JournalQuestions } from "./components/JournalQuestions";
 import TopBar from './components/TopBar';
+import { logAction } from "./services/userActionLogger";
 
 const MIN_WIDTH_PERCENT = 30;
 const MAX_WIDTH_PERCENT = 50;
@@ -124,7 +125,7 @@ const getGameDisplayName = (selectedGame) => {
 
 const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onToggleLayout, isDualScreen }) => {
   const { logAction } = useUserLog();
-  const [activeTab, setActiveTab] = useState('dataplots');
+  const [activeTab, setActiveTab] = useState('journal'); // Default to 'journal' tab
   
   // Plot state tracking
   const [plot1Type, setPlot1Type] = useState('line');
@@ -178,12 +179,20 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
     if (activeTab === tabName) {
       return;
     }
-    logAction(`Switched to ${tabName} tab`);
+    logAction({
+      type: "navigation",
+      action: "tab_change",
+      details: { from: activeTab, to: tabName }
+    });
     setActiveTab(tabName);
   };
 
   const handlePlotTypeChange = (plotNumber, newType) => {
-    logAction(`Plot ${plotNumber} type changed to ${newType}`);
+    logAction({
+      type: "plot_interaction",
+      action: "plot_type_change",
+      details: { plotNumber: plotNumber, newType: newType }
+    });
     if (plotNumber === 1) {
       setPlot1Type(newType);
     } else {
@@ -192,7 +201,11 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
   };
 
   const handleVariableChange = (plotNumber, axis, variable, checked) => {
-    logAction(`Plot ${plotNumber} ${axis}-variable "${variable}" ${checked ? 'selected' : 'deselected'}`);
+    logAction({
+      type: "plot_interaction",
+      action: "variable_selection",
+      details: { plotNumber: plotNumber, axis: axis, variable: variable, selected: checked }
+    });
     
     if (plotNumber === 1) {
       if (axis === 'X') {
@@ -226,8 +239,11 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
       <TopBar
         gameName={getGameDisplayName(selectedGame)}
         cadetName={typeof window !== 'undefined' ? localStorage.getItem('selectedPlayer') : ''}
-        onBack={handleBackToGames}
-        onToggleView={onToggleLayout}
+        onBack={() => {
+          logAction({ type: "navigation", action: "back_to_games", details: {} });
+          handleBackToGames();
+        }}
+        onToggleView={() => onToggleLayout('SingleScreenLayout')}
         toggleLabel={isDualScreen ? 'Go Single Screen' : 'Go Dual Screen'}
       />
       <div style={{
@@ -252,7 +268,7 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
         }}>
           <button
             className="tab-btn"
-            onClick={() => setActiveTab('dataplots')}
+            onClick={() => handleTabClick('dataplots')}
             style={{
               background: 'none',
               color: 'var(--text-dark)',
@@ -289,7 +305,7 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
           </button>
           <button
             className="tab-btn"
-            onClick={() => setActiveTab('journal')}
+            onClick={() => handleTabClick('journal')}
             style={{
               background: 'none',
               color: 'var(--text-dark)',

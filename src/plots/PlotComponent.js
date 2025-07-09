@@ -10,7 +10,7 @@ const PlotComponent = ({ plotLabel, theme, data, logAction }) => {
     plotType,
     xVars,
     yVars,
-    personFilter,
+    cadetFilter,
     allowedMatrix,
     variables,
     PlotRenderer,
@@ -19,13 +19,13 @@ const PlotComponent = ({ plotLabel, theme, data, logAction }) => {
     handleYVariableToggle,
     handleHistogramXVariableToggle,
     handlePieVariableSelect,
-    handlePersonFilterToggle,
-    onSelectAllDevices,
-    onDeselectAllDevices,
+    handleCadetFilterToggle,
+    onSelectAllCadets,
+    onDeselectAllCadets,
   } = usePlotState(plotLabel, logAction);
 
   // Filter data for the selected variables and person filter
-  const filteredData = filterData(data, xVars, yVars, personFilter);
+  const filteredData = filterData(data, xVars, yVars, cadetFilter);
 
   return (
     <div className={styles.plotContainer}>
@@ -44,7 +44,7 @@ const PlotComponent = ({ plotLabel, theme, data, logAction }) => {
         variables={variables}
         xVars={xVars}
         yVars={yVars}
-        personFilter={personFilter}
+        personFilter={cadetFilter}
         allowedMatrix={allowedMatrix}
         plotLabel={plotLabel}
         onPlotTypeChange={handlePlotTypeChange}
@@ -52,9 +52,9 @@ const PlotComponent = ({ plotLabel, theme, data, logAction }) => {
         onYVariableToggle={handleYVariableToggle}
         onHistogramXVariableToggle={handleHistogramXVariableToggle}
         onPieVariableSelect={handlePieVariableSelect}
-        onPersonFilterToggle={handlePersonFilterToggle}
-        onSelectAllDevices={onSelectAllDevices}
-        onDeselectAllDevices={onDeselectAllDevices}
+        onPersonFilterToggle={handleCadetFilterToggle}
+        onSelectAllDevices={onSelectAllCadets}
+        onDeselectAllDevices={onDeselectAllCadets}
       />
     </div>
   );
