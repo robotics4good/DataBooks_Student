@@ -198,7 +198,7 @@ const GameLayout = ({ selectedGame, handleBackToGames, onToggleLayout, playerNam
         {/* Right: DataPlots */}
         <div style={styles.rightPanel}>
           <div style={styles.plotContainer}>
-            <PlotComponent plotLabel="DataPlots" data={[]} logAction={logAction} />
+            <PlotComponent plotLabel="DataPlot 3" data={[]} logAction={logAction} />
           </div>
         </div>
       </div>

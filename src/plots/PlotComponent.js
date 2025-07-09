@@ -27,18 +27,39 @@ const PlotComponent = ({ plotLabel, theme, data, logAction }) => {
   // Filter data for the selected variables and person filter
   const filteredData = filterData(data, xVars, yVars, cadetFilter);
 
+  // Professional, robust empty data check
+  const hasData = Array.isArray(filteredData) && filteredData.some(series => Array.isArray(series.data) && series.data.length > 0);
+
   return (
     <div className={styles.plotContainer}>
-      {/* Render the actual plot */}
+      {/* Always reserve space for the plot or the no-data message */}
       <div className={styles.plotRenderer}>
-        {plotType === 'pie' ? (
-          <PlotRenderer theme={theme} logAction={logAction} />
+        {hasData ? (
+          plotType === 'pie' ? (
+            <PlotRenderer theme={theme} logAction={logAction} />
+          ) : (
+            <PlotRenderer data={data} filteredData={filteredData} theme={theme} />
+          )
         ) : (
-          <PlotRenderer data={data} filteredData={filteredData} theme={theme} />
+          <div style={{
+            height: '100%',
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            textAlign: 'center',
+            fontSize: '1.1rem',
+            color: '#666',
+            background: '#f8f3ea',
+            borderRadius: 8,
+            border: '1.5px solid #e0e0e0',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.07)'
+          }}>
+            No data to display currently
+          </div>
         )}
       </div>
-
-      {/* Render plot controls */}
+      {/* Plot controls always below */}
       <PlotControls
         plotType={plotType}
         variables={variables}

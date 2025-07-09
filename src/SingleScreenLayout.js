@@ -347,7 +347,7 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
               {/* Left Plot */}
               <div style={styles.plotContainer}>
                 <PlotComponent
-                  plotLabel="DataPlots 1"
+                  plotLabel="DataPlot 1"
                   data={[]}
                   logAction={logAction}
                 />
@@ -355,7 +355,7 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
               {/* Right Plot */}
               <div style={styles.plotContainer}>
                 <PlotComponent
-                  plotLabel="DataPlots 2"
+                  plotLabel="DataPlot 2"
                   data={[]}
                   logAction={logAction}
                 />
