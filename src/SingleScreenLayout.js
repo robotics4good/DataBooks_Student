@@ -51,8 +51,8 @@ const styles = {
     display: "flex",
     gap: "20px",
     paddingBottom: 0,
-    height: "420px",
-    maxHeight: "60vh",
+    flex: 1,
+    minHeight: 0,
   },
   plotContainer: {
     flex: 1,
@@ -335,7 +335,7 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
           </button>
         </div>
         {activeTab === 'dataplots' && (
-          <div style={{ display: "flex", flexDirection: "column" }}>
+          <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
             <div style={styles.plotRow}>
               {/* Left Plot */}
               <div style={styles.plotContainer}>

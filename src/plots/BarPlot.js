@@ -51,7 +51,7 @@ const BarPlot = ({ data = [], xVar = 'Time', yVar = 'Infected Cadets' }) => {
   }
 
   return (
-    <div style={{ height: "100%", width: "100%" }}>
+    <div style={{ height: "100%", width: "100%", maxHeight: 400 }}>
       <ResponsiveBar
         data={barData}
         keys={["y"]}

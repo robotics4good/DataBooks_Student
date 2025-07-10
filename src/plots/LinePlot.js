@@ -123,7 +123,7 @@ const LinePlot = (props) => {
   const minY = allValues.length > 0 ? Math.min(...allValues) : 0;
   
   return (
-    <div style={{ height: "100%", width: "100%" }}>
+    <div style={{ height: "100%", width: "100%", maxHeight: 400 }}>
       <ResponsiveLine
         data={lineData}
         margin={{ top: 60, right: 90, bottom: 90, left: 90 }}

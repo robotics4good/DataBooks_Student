@@ -53,7 +53,7 @@ const ScatterPlot = ({ data = [], xVar = 'Time', yVar = 'Infected Cadets' }) => 
   const minY = allYValues.length > 0 ? Math.min(...allYValues) : 0;
 
   return (
-    <div style={{ height: "100%", width: "100%" }}>
+    <div style={{ height: "100%", width: "100%", maxHeight: 400 }}>
       <ResponsiveScatterPlot
         data={scatterData}
         margin={{ top: 60, right: 90, bottom: 90, left: 90 }}
