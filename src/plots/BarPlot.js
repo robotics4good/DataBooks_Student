@@ -4,6 +4,8 @@ import React from 'react';
 import { ResponsiveBar } from "@nivo/bar";
 import { getLocalTimeOnlyString } from '../utils/timeUtils';
 
+console.log('[BarPlot] (top-level) BarPlot component file loaded');
+
 const variableMap = {
   'Time': item => getLocalTimeOnlyString(new Date(item.timestamp)),
   'Meetings Held': item => item.meetings_held,

@@ -32,6 +32,7 @@ const styles = {
     flexDirection: "column",
     background: "var(--offwhite-bg)",
     marginTop: '56px',
+    height: '100%',
   },
   tabHeader: {
     display: "flex",
@@ -42,14 +43,16 @@ const styles = {
     boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
   },
   contentArea: {
-    minHeight: '100vh',
+    minHeight: '100%',
     padding: 0,
     paddingBottom: 0
   },
   plotRow: {
     display: "flex",
     gap: "20px",
-    paddingBottom: 0
+    paddingBottom: 0,
+    height: "420px",
+    maxHeight: "60vh",
   },
   plotContainer: {
     flex: 1,

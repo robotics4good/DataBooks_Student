@@ -2,6 +2,8 @@ import React from 'react';
 import { ResponsiveScatterPlot } from "@nivo/scatterplot";
 import { getLocalTimeOnlyString } from '../utils/timeUtils';
 
+console.log('[ScatterPlot] (top-level) ScatterPlot component file loaded');
+
 const variableMap = {
   'Time': item => getLocalTimeOnlyString(new Date(item.timestamp)),
   'Meetings Held': item => item.meetings_held,

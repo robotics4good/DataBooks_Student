@@ -4,6 +4,8 @@ import React from 'react';
 import { ResponsiveLine } from "@nivo/line";
 import { getLocalTimeOnlyString } from '../utils/timeUtils';
 
+console.log('[LinePlot] (top-level) LinePlot component file loaded');
+
 const variableMap = {
   'Time': item => getLocalTimeOnlyString(new Date(item.timestamp)),
   'Meetings Held': item => item.meetings_held,
@@ -13,50 +15,78 @@ const variableMap = {
   'Healthy Cadets': item => item.healthy_cadets,
 };
 
-const LinePlot = ({ data = [], xVar = 'Time', yVar = 'Infected Cadets' }) => {
+const LinePlot = (props) => {
+  console.log('[LinePlot] Component rendered with props:', props);
+  const { data = [], xVar = 'Time', yVar = 'Infected Cadets' } = props;
+  console.log('[LinePlot] RAW DATA:', data);
+  console.log('[LinePlot] xVar:', xVar, 'yVar:', yVar);
   // Special case: Time vs Meetings Held with dynamic binning
   const isTimeVsMeetings = xVar === 'Time' && yVar === 'Meetings Held';
+  // DEBUG: Log all props and flags
+  console.log('[LinePlot] data:', data);
+  console.log('[LinePlot] xVar:', xVar, 'yVar:', yVar, 'isTimeVsMeetings:', isTimeVsMeetings);
   const getLineData = () => {
-    if (!data || !data.length) return [];
+    if (!data || !data.length) {
+      console.warn('[LinePlot] No data array or empty data array');
+      return [];
+    }
     if (isTimeVsMeetings) {
       // Get first ESP packet time and now (local time at plot render)
       const firstTime = new Date(data[0].timestamp);
       const now = new Date(); // Use current local time as upper bound
+      console.log('[LinePlot] firstTime:', firstTime, 'now:', now);
       const numBins = 10;
       const binSizeMs = (now - firstTime) / numBins;
       // Get all unique meeting counts and their times
       const meetingTimes = data
-        .filter(item => typeof item.meetings_held === 'number')
+        .filter(item => {
+          if (typeof item.meetings_held !== 'number' || !isFinite(item.meetings_held)) {
+            console.warn('[LinePlot] Missing or non-numeric meetings_held in item:', item);
+            return false;
+          }
+          return true;
+        })
         .map(item => ({
           time: new Date(item.timestamp),
-          count: item.meetings_held
+          count: Number.isFinite(item.meetings_held) ? item.meetings_held : 0
         }));
+      console.log('[LinePlot] meetingTimes:', meetingTimes);
       // Generate bins from firstTime to now
       const bins = [];
       for (let i = 0; i <= numBins; i++) {
         const binTime = new Date(firstTime.getTime() + i * binSizeMs);
         bins.push(binTime);
       }
+      console.log('[LinePlot] bins:', bins.map(t => t.toISOString()));
       // For each bin, find the max meetings_held up to that time
       let lastCount = 0;
-      const binData = bins.map(binTime => {
+      let binData = bins.map(binTime => {
         const upToBin = meetingTimes.filter(mt => mt.time <= binTime);
         const count = upToBin.length > 0 ? Math.max(...upToBin.map(mt => mt.count)) : lastCount;
         lastCount = count;
         return {
           x: getLocalTimeOnlyString(binTime),
-          y: count
+          y: Number.isFinite(count) ? count : 0
         };
       });
+      // Filter out any points with non-numeric or NaN y (but keep zeros)
+      binData = binData.filter(pt => typeof pt.y === 'number' && !isNaN(pt.y));
+      console.log('[LinePlot] binData:', binData);
+      console.log('[LinePlot] FINAL BIN DATA:', binData);
       return [{ id: 'Meetings Held', data: binData }];
     }
     // Default: use variableMap
     const xAccessor = variableMap[xVar] || (item => item[xVar]);
     const yAccessor = variableMap[yVar] || (item => item[yVar]);
-    const transformedData = data.map(item => ({
-      x: xAccessor(item),
-      y: yAccessor(item)
-    }));
+    const transformedData = data.map(item => {
+      let yVal = yAccessor(item);
+      if (typeof yVal !== 'number' || isNaN(yVal)) yVal = 0;
+      return {
+        x: xAccessor(item),
+        y: yVal
+      };
+    }).filter(pt => typeof pt.y === 'number' && !isNaN(pt.y));
+    console.log('[LinePlot] Default transformedData:', transformedData.map(pt => pt.y));
     return [{
       id: 'ESP Data',
       data: transformedData
@@ -104,13 +134,13 @@ const LinePlot = ({ data = [], xVar = 'Time', yVar = 'Infected Cadets' }) => {
           max: maxY + (maxY - minY) * 0.1 
         }}
         axisBottom={{
-          legend: "Time",
+          legend: xVar,
           legendOffset: 56,
           legendPosition: "middle",
           tickRotation: -45,
         }}
         axisLeft={{ 
-          legend: "Interaction Value", 
+          legend: yVar, 
           legendOffset: -60, 
           legendPosition: "middle" 
         }}

@@ -4,6 +4,12 @@ import { useState, useEffect, useRef } from 'react';
 import { db, ref, get, onValue } from '../firebase';
 import { formatLocalTime, getLocalIsoString, getLocalTimeOnlyString } from '../utils/timeUtils';
 import { playerNames } from '../plots/plotConfigs';
+import { toZonedTime } from 'date-fns-tz';
+
+const SAN_DIEGO_TZ = 'America/Los_Angeles';
+function toSanDiegoDate(ts) {
+  return toZonedTime(new Date(ts), SAN_DIEGO_TZ);
+}
 
 /**
  * Custom hook for fetching ESP data from Firebase and transforming it for plots
@@ -23,11 +29,11 @@ export function useESPData(enableRealTime = false) {
       const snapshot = await get(meetingLogsRef);
       const logs = snapshot.val();
       if (!logs) return [];
-      // Convert to array and local time
-      return Object.values(logs).map(log => ({
-        ...log,
-        localTime: new Date(log.timestamp)
-      })).filter(log => log.event === 'MEETINGEND');
+      // Only keep MEETINGEND events, parse timestamp as Date (no conversion)
+      return Object.values(logs)
+        .filter(log => log.event === 'MEETINGEND')
+        .map(log => new Date(log.timestamp))
+        .sort((a, b) => a - b);
     } catch (err) {
       return [];
     }
@@ -52,8 +58,8 @@ export function useESPData(enableRealTime = false) {
         // Transform ESP data: always use ESP timestamp as anchor (local time)
         const transformedData = Object.keys(data).map(key => {
           const record = { id: key, ...data[key] };
-          // Parse ESP timestamp as local time
-          let localDate = new Date(record.timestamp);
+          // Parse ESP timestamp as San Diego time
+          let localDate = toSanDiegoDate(record.timestamp);
           record.localTime = localDate;
           return record;
         });
@@ -99,7 +105,7 @@ export function useESPData(enableRealTime = false) {
           const hour = record.localTime.getHours();
           const session_half = hour < 12 ? 'AM' : 'PM';
           // Count meetings held (MEETINGEND events before or at this record's ESP time)
-          const meetings_held = meetingEnds.filter(log => log.localTime <= record.localTime).length;
+          const meetings_held = meetingEnds.filter(endTime => endTime <= record.localTime).length;
           // Infection status mapping
           const isCadet = playerNames.includes(record.device_id);
           const isInfected = record.infection_status === 1;
@@ -114,6 +120,15 @@ export function useESPData(enableRealTime = false) {
             infected_sectors
           };
         });
+        console.log('[useESPData] Sample meetingEnds:', meetingEnds.slice(0, 5));
+        console.log('[useESPData] Sample ESP packets:', downsampledData.slice(0, 5).map(r => ({
+          id: r.id,
+          device_id: r.device_id,
+          timestamp: r.timestamp,
+          localTime: r.localTime,
+          meetings_held: r.meetings_held
+        })));
+        console.log('[useESPData] Sample normalizedData:', normalizedData.slice(0, 10));
         setEspData(normalizedData);
       } // else: no data, do not update
     } catch (err) {
@@ -147,7 +162,7 @@ export function useESPData(enableRealTime = false) {
         const transformedData = Object.keys(data).map(key => {
           const record = { id: key, ...data[key] };
           // Parse timestamp as UTC, then convert to San Diego time
-          let localDate = new Date(record.timestamp);
+          let localDate = toSanDiegoDate(record.timestamp);
           record.localTime = localDate;
           return record;
         });
@@ -193,7 +208,7 @@ export function useESPData(enableRealTime = false) {
           const hour = record.localTime.getHours();
           const session_half = hour < 12 ? 'AM' : 'PM';
           // Count meetings held (MEETINGEND events before or at this record's ESP time)
-          const meetings_held = meetingEnds.filter(log => log.localTime <= record.localTime).length;
+          const meetings_held = meetingEnds.filter(endTime => endTime <= record.localTime).length;
           // Infection status mapping
           const isCadet = playerNames.includes(record.device_id);
           const isInfected = record.infection_status === 1;

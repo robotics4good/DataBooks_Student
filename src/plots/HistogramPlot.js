@@ -2,6 +2,8 @@ import React from 'react';
 import { ResponsiveBar } from "@nivo/bar";
 import { getLocalTimeOnlyString } from '../utils/timeUtils';
 
+console.log('[HistogramPlot] (top-level) HistogramPlot component file loaded');
+
 const variableMap = {
   'Infected Sectors': item => item.infected_sectors,
   'Infected Cadets': item => item.infected_cadets,

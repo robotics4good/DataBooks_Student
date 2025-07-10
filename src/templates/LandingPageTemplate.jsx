@@ -1,6 +1,6 @@
 const LandingPageTemplate = ({ gameRoutes, onNavigate, className }) => {
   return (
-    <div className={className} style={{ height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+    <div className={className} style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
       <h1 style={{ fontSize: "4rem", marginBottom: "2rem" }}>DataOrganisms</h1>
       <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
         {Object.entries(gameRoutes).map(([game, route]) => {

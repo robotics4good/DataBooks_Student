@@ -6,7 +6,7 @@ import { useUserLog } from "./UserLog";
 import { JournalProvider } from "./JournalContext";
 import { logAction as globalLogAction } from "./services/userActionLogger";
 
-const GamePage = ({ gameConfig }) => {
+const GamePage = ({ gameConfig, setDualScreen: setDualScreenProp }) => {
   const { gameKey } = useParams();
   const navigate = useNavigate();
   const { logAction, startLogging } = useUserLog();
@@ -16,6 +16,13 @@ const GamePage = ({ gameConfig }) => {
     // Enable logging as soon as the game page loads
     startLogging();
   }, [startLogging]);
+
+  // Sync dualScreen state with App if setDualScreen prop is provided
+  useEffect(() => {
+    if (typeof setDualScreenProp === 'function') {
+      setDualScreenProp(dualScreen);
+    }
+  }, [dualScreen, setDualScreenProp]);
 
   // Find the current game from config
   const currentGame = gameConfig.games.find(g => g.key === gameKey);

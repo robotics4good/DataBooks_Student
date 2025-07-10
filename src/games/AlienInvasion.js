@@ -294,7 +294,7 @@ const AlienInvasion = () => {
   return (
     <div style={{ 
       padding: 20,
-      height: '100vh',
+      height: '100%',
       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
       position: 'relative'
     }}>

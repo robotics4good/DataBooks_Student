@@ -29,9 +29,16 @@ const PlotComponent = ({ plotLabel, theme, data, logAction, rawData }) => {
 
   // Filter data for the selected variables and person filter
   const filteredData = filterData(data, xVars, yVars, cadetFilter);
+  // DEBUG: Log xVars, yVars, plotType, and filteredData
+  console.log('[PlotComponent] xVars:', xVars, 'yVars:', yVars, 'plotType:', plotType);
+  console.log('[PlotComponent] filteredData:', filteredData);
 
   // Professional, robust empty data check
   const hasData = Array.isArray(filteredData) && filteredData.some(series => Array.isArray(series.data) && series.data.length > 0);
+
+  // Failsafe: log the actual PlotRenderer being used
+  console.log('[PlotComponent] PlotRenderer:', PlotRenderer && PlotRenderer.name ? PlotRenderer.name : PlotRenderer);
+  console.log('[PlotComponent] About to render PlotRenderer:', PlotRenderer, typeof PlotRenderer);
 
   return (
     <div className={styles.plotContainer}>
@@ -40,8 +47,10 @@ const PlotComponent = ({ plotLabel, theme, data, logAction, rawData }) => {
         {hasData ? (
           plotType === 'pie' ? (
             <PlotRenderer theme={theme} logAction={logAction} />
+          ) : plotType === 'line' ? (
+            <PlotRenderer data={data} xVar={xVars[0]} yVar={yVars[0]} theme={theme} />
           ) : (
-            <PlotRenderer data={data} filteredData={filteredData} theme={theme} />
+            <PlotRenderer data={filteredData} theme={theme} />
           )
         ) : (
           <div style={{
