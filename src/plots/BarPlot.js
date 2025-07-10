@@ -4,18 +4,24 @@ import React from 'react';
 import { ResponsiveBar } from "@nivo/bar";
 import { getLocalTimeOnlyString } from '../utils/timeUtils';
 
-const BarPlot = ({ data = [] }) => {
-  // Transform data for bar plot if provided
+const variableMap = {
+  'Time': item => getLocalTimeOnlyString(new Date(item.timestamp)),
+  'Meetings Held': item => item.meetings_held,
+  'Infected Sectors': item => item.infected_sectors,
+  'Infected Cadets': item => item.infected_cadets,
+  'Healthy Sectors': item => item.healthy_sectors,
+  'Healthy Cadets': item => item.healthy_cadets,
+};
+
+const BarPlot = ({ data = [], xVar = 'Time', yVar = 'Infected Cadets' }) => {
   const getBarData = () => {
     if (!data || !data.length) return [];
-    
-    // Transform ESP data into bar chart format
-    const formattedData = data.map(item => ({
-      x: getLocalTimeOnlyString(new Date(item.timestamp)),
-      y: item.interaction || 0
+    const xAccessor = variableMap[xVar] || (item => item[xVar]);
+    const yAccessor = variableMap[yVar] || (item => item[yVar]);
+    return data.map(item => ({
+      x: xAccessor(item),
+      y: yAccessor(item)
     }));
-    
-    return formattedData;
   };
 
   const barData = getBarData();

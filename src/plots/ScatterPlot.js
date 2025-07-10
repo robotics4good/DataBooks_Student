@@ -1,21 +1,25 @@
 import React from 'react';
 import { ResponsiveScatterPlot } from "@nivo/scatterplot";
+import { getLocalTimeOnlyString } from '../utils/timeUtils';
 
-const ScatterPlot = ({ data = [] }) => {
-  // Transform data for scatter plot if provided
+const variableMap = {
+  'Time': item => getLocalTimeOnlyString(new Date(item.timestamp)),
+  'Meetings Held': item => item.meetings_held,
+  'Infected Sectors': item => item.infected_sectors,
+  'Infected Cadets': item => item.infected_cadets,
+  'Healthy Sectors': item => item.healthy_sectors,
+  'Healthy Cadets': item => item.healthy_cadets,
+};
+
+const ScatterPlot = ({ data = [], xVar = 'Time', yVar = 'Infected Cadets' }) => {
   const getScatterData = () => {
     if (!data || !data.length) return [];
-    
-    // Transform ESP data into scatter plot format
-    const transformedData = data.map(item => ({
-      x: item.interaction || 0,
-      y: item.engagement || 0
+    const xAccessor = variableMap[xVar] || (item => item[xVar]);
+    const yAccessor = variableMap[yVar] || (item => item[yVar]);
+    return data.map(item => ({
+      x: xAccessor(item),
+      y: yAccessor(item)
     }));
-    
-    return [{
-      id: 'ESP Data Points',
-      data: transformedData
-    }];
   };
 
   const scatterData = getScatterData();

@@ -40,11 +40,10 @@ const PlotControls = ({
   onDeselectAllSectors, // new
   rawData // <-- add rawData prop to get current ESP data
 }) => {
-  // Dynamically determine present cadet and sector IDs from ESP data
+  // Dynamically determine present cadet IDs from ESP data (all unique device_ids)
   const presentCadetIds = Array.from(new Set(
     (rawData || [])
       .map(d => d.device_id)
-      .filter(id => playerNames.includes(id))
   ));
   const presentSectorIds = Array.from(new Set(
     (rawData || [])
@@ -61,6 +60,8 @@ const PlotControls = ({
   // Show sector filter only if relevant variable is selected
   const sectorRelevantVars = ["Infected Sectors", "Healthy Sectors"];
   const showSectorFilter = xVars.concat(yVars).some(v => sectorRelevantVars.includes(v));
+
+  // Device filter is removed per user requirements
 
   return (
     <div className={styles.controlsContainer}>
@@ -208,7 +209,7 @@ const PlotControls = ({
             <div className={styles.deviceFilterOptions}>
               {presentCadetIds.length === 0 ? (
                 <div className={styles.deviceFilterEmpty}>
-                  No cadets detected
+                  No devices detected
                 </div>
               ) : (
                 presentCadetIds.map(name => (

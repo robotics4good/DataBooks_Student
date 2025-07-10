@@ -5,6 +5,9 @@ import { filterData } from './plotUtils';
 import PlotControls from './PlotControls';
 
 const PlotComponent = ({ plotLabel, theme, data, logAction, rawData }) => {
+  // DEBUG: Log data and rawData
+  console.log('PlotComponent data:', data);
+  console.log('PlotComponent rawData:', rawData);
   // Use custom hook for state management
   const {
     plotType,
@@ -22,7 +25,7 @@ const PlotComponent = ({ plotLabel, theme, data, logAction, rawData }) => {
     handleCadetFilterToggle,
     onSelectAllCadets,
     onDeselectAllCadets,
-  } = usePlotState(plotLabel, logAction);
+  } = usePlotState(plotLabel, logAction, data);
 
   // Filter data for the selected variables and person filter
   const filteredData = filterData(data, xVars, yVars, cadetFilter);
@@ -76,7 +79,7 @@ const PlotComponent = ({ plotLabel, theme, data, logAction, rawData }) => {
         onPersonFilterToggle={handleCadetFilterToggle}
         onSelectAllDevices={onSelectAllCadets}
         onDeselectAllDevices={onDeselectAllCadets}
-        rawData={rawData}
+        rawData={data}
       />
     </div>
   );

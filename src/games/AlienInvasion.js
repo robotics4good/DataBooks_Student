@@ -10,7 +10,12 @@ import { getLocalTime } from '../utils/timeUtils';
 // @param {string} sessionId - Unique identifier for this game session (passed from parent)
 const AlienInvasion = () => {
   const { logAction } = useUserLog();
+  // DEBUG: Log session ID
+  const sessionId = localStorage.getItem('activeSessionId');
+  console.log('AlienInvasion sessionId:', sessionId);
   const { espData, loading, error, getPlotData } = useESPData();
+  // DEBUG: Log espData before rendering
+  console.log('AlienInvasion espData:', espData);
   
   // Game state
   const [gameState, setGameState] = useState('waiting');
@@ -158,8 +163,8 @@ const AlienInvasion = () => {
     );
   }
 
-  // Debug: print ESP data to console
-  console.log("ESP DATA FOR DEBUGGING:", espData);
+  // DEBUG: Log espData before rendering
+  console.log('AlienInvasion espData:', espData);
 
   // Game UI components
   const GameControls = () => (

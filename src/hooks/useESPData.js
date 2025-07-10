@@ -47,6 +47,7 @@ export function useESPData(enableRealTime = false) {
       const espDataRef = ref(db, 'readings');
       const snapshot = await get(espDataRef);
       const data = snapshot.val();
+      console.debug('[ESPData] Raw readings node from Firebase:', data); // DEBUG LOG
       if (data) {
         // Transform ESP data: always use ESP timestamp as anchor (local time)
         const transformedData = Object.keys(data).map(key => {
@@ -99,7 +100,7 @@ export function useESPData(enableRealTime = false) {
           const session_half = hour < 12 ? 'AM' : 'PM';
           // Count meetings held (MEETINGEND events before or at this record's ESP time)
           const meetings_held = meetingEnds.filter(log => log.localTime <= record.localTime).length;
-          // Infection status mapping (corrected logic)
+          // Infection status mapping
           const isCadet = playerNames.includes(record.device_id);
           const isInfected = record.infection_status === 1;
           const infected_cadets = isCadet && isInfected ? record.device_id : null;
@@ -136,6 +137,7 @@ export function useESPData(enableRealTime = false) {
     // Helper to process and update ESP data
     const processESPData = (data) => {
       try {
+        console.debug('[ESPData] processESPData received:', data); // DEBUG LOG
         if (!data) {
           if (isMounted) setEspData([]);
           return;
@@ -192,7 +194,7 @@ export function useESPData(enableRealTime = false) {
           const session_half = hour < 12 ? 'AM' : 'PM';
           // Count meetings held (MEETINGEND events before or at this record's ESP time)
           const meetings_held = meetingEnds.filter(log => log.localTime <= record.localTime).length;
-          // Infection status mapping (corrected logic)
+          // Infection status mapping
           const isCadet = playerNames.includes(record.device_id);
           const isInfected = record.infection_status === 1;
           const infected_cadets = isCadet && isInfected ? record.device_id : null;

@@ -4,19 +4,61 @@ import React from 'react';
 import { ResponsiveLine } from "@nivo/line";
 import { getLocalTimeOnlyString } from '../utils/timeUtils';
 
-const LinePlot = ({ data = [] }) => {
-  // Transform data for line plot if provided
+const variableMap = {
+  'Time': item => getLocalTimeOnlyString(new Date(item.timestamp)),
+  'Meetings Held': item => item.meetings_held,
+  'Infected Sectors': item => item.infected_sectors,
+  'Infected Cadets': item => item.infected_cadets,
+  'Healthy Sectors': item => item.healthy_sectors,
+  'Healthy Cadets': item => item.healthy_cadets,
+};
+
+const LinePlot = ({ data = [], xVar = 'Time', yVar = 'Infected Cadets' }) => {
+  // Special case: Time vs Meetings Held with dynamic binning
+  const isTimeVsMeetings = xVar === 'Time' && yVar === 'Meetings Held';
   const getLineData = () => {
     if (!data || !data.length) return [];
-    
-    // Transform ESP data into line plot format
+    if (isTimeVsMeetings) {
+      // Get first ESP packet time and now (local time at plot render)
+      const firstTime = new Date(data[0].timestamp);
+      const now = new Date(); // Use current local time as upper bound
+      const numBins = 10;
+      const binSizeMs = (now - firstTime) / numBins;
+      // Get all unique meeting counts and their times
+      const meetingTimes = data
+        .filter(item => typeof item.meetings_held === 'number')
+        .map(item => ({
+          time: new Date(item.timestamp),
+          count: item.meetings_held
+        }));
+      // Generate bins from firstTime to now
+      const bins = [];
+      for (let i = 0; i <= numBins; i++) {
+        const binTime = new Date(firstTime.getTime() + i * binSizeMs);
+        bins.push(binTime);
+      }
+      // For each bin, find the max meetings_held up to that time
+      let lastCount = 0;
+      const binData = bins.map(binTime => {
+        const upToBin = meetingTimes.filter(mt => mt.time <= binTime);
+        const count = upToBin.length > 0 ? Math.max(...upToBin.map(mt => mt.count)) : lastCount;
+        lastCount = count;
+        return {
+          x: getLocalTimeOnlyString(binTime),
+          y: count
+        };
+      });
+      return [{ id: 'Meetings Held', data: binData }];
+    }
+    // Default: use variableMap
+    const xAccessor = variableMap[xVar] || (item => item[xVar]);
+    const yAccessor = variableMap[yVar] || (item => item[yVar]);
     const transformedData = data.map(item => ({
-      x: getLocalTimeOnlyString(new Date(item.timestamp)),
-      y: item.interaction || 0
+      x: xAccessor(item),
+      y: yAccessor(item)
     }));
-    
     return [{
-      id: 'ESP Interactions',
+      id: 'ESP Data',
       data: transformedData
     }];
   };

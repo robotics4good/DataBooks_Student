@@ -1,15 +1,12 @@
 import React, { useState, useRef, useLayoutEffect } from 'react';
 import AlienInvasion from "./games/AlienInvasion";
-import WhisperWeb from "./games/WhisperWeb";
-import LogisticsLeague from "./games/LogisticsLeague";
-import PollinationParty from "./games/PollinationParty";
-import RushHourRebels from "./games/RushHourRebels";
 import { useUserLog } from "./UserLog";
 import PlotComponent from "./plots/PlotComponent";
 import { useJournal } from "./JournalContext";
 import { JournalQuestions } from "./components/JournalQuestions";
 import TopBar from './components/TopBar';
 import { logAction } from "./services/userActionLogger";
+import { useESPData } from "./hooks/useESPData";
 
 const MIN_WIDTH_PERCENT = 30;
 const MAX_WIDTH_PERCENT = 50;
@@ -20,14 +17,6 @@ const GameContent = ({ selectedGame }) => {
   switch (selectedGame) {
     case 'alien-invasion':
       return <AlienInvasion />;
-    case 'whisper-web':
-      return <WhisperWeb />;
-    case 'logistics-league':
-      return <LogisticsLeague />;
-    case 'pollination-party':
-      return <PollinationParty />;
-    case 'rush-hour-rebels':
-      return <RushHourRebels />;
     default:
       return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: '1.2rem' }}>
         Select a game to begin
@@ -125,6 +114,7 @@ const getGameDisplayName = (selectedGame) => {
 
 const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onToggleLayout, isDualScreen }) => {
   const { logAction } = useUserLog();
+  const { espData, loading, error } = useESPData();
   const [activeTab, setActiveTab] = useState('journal'); // Default to 'journal' tab
   
   // Plot state tracking
@@ -348,7 +338,7 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
               <div style={styles.plotContainer}>
                 <PlotComponent
                   plotLabel="DataPlot 1"
-                  data={[]}
+                  data={espData}
                   logAction={logAction}
                 />
               </div>
@@ -356,7 +346,7 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
               <div style={styles.plotContainer}>
                 <PlotComponent
                   plotLabel="DataPlot 2"
-                  data={[]}
+                  data={espData}
                   logAction={logAction}
                 />
               </div>

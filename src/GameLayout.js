@@ -1,15 +1,12 @@
 import React, { useState, useLayoutEffect } from 'react';
 import AlienInvasion from "./games/AlienInvasion";
-import WhisperWeb from "./games/WhisperWeb";
-import LogisticsLeague from "./games/LogisticsLeague";
-import PollinationParty from "./games/PollinationParty";
-import RushHourRebels from "./games/RushHourRebels";
 import PlotComponent from "./plots/PlotComponent";
 import { useUserLog } from "./UserLog";
 import { useJournal } from "./JournalContext";
 import { JournalQuestions } from "./components/JournalQuestions";
 import TopBar from './components/TopBar';
 import { logAction } from "./services/userActionLogger";
+import { useESPData } from "./hooks/useESPData";
 
 const MIN_WIDTH_PERCENT = 30;
 const MAX_WIDTH_PERCENT = 50;
@@ -106,14 +103,6 @@ const RightPanelContent = ({ selectedGame, theme, sessionId = "1234567890" }) =>
   switch (selectedGame) {
     case 'alien-invasion':
       return <AlienInvasion sessionId={sessionId} />;
-    case 'whisper-web':
-      return <WhisperWeb sessionId={sessionId} />;
-    case 'logistics-league':
-      return <LogisticsLeague sessionId={sessionId} />;
-    case 'pollination-party':
-      return <PollinationParty sessionId={sessionId} />;
-    case 'rush-hour-rebels':
-      return <RushHourRebels sessionId={sessionId} />;
     default:
       return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: '1.2rem' }}>
         Select a game to begin
@@ -136,6 +125,7 @@ const getGameDisplayName = (selectedGame) => {
 
 const GameLayout = ({ selectedGame, handleBackToGames, onToggleLayout, playerNames, isDualScreen }) => {
   const { logAction } = useUserLog();
+  const { espData, loading, error } = useESPData();
   const [leftWidth, setLeftWidth] = useState(38);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -198,7 +188,7 @@ const GameLayout = ({ selectedGame, handleBackToGames, onToggleLayout, playerNam
         {/* Right: DataPlots */}
         <div style={styles.rightPanel}>
           <div style={styles.plotContainer}>
-            <PlotComponent plotLabel="DataPlot 3" data={[]} logAction={logAction} />
+            <PlotComponent plotLabel="DataPlot 3" data={espData} logAction={logAction} />
           </div>
         </div>
       </div>

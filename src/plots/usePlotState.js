@@ -9,12 +9,28 @@ import { initializeVariableFilters, initializeCadetFilter } from './plotUtils';
  * @param {Function} logAction - Logging function
  * @returns {Object} - Plot state and state management functions
  */
-export function usePlotState(plotLabel, logAction) {
+export function usePlotState(plotLabel, logAction, data = []) {
   // Core plot state
   const [plotType, setPlotType] = useState('line');
   const [xVars, setXVars] = useState([]);
   const [yVars, setYVars] = useState([]);
-  
+
+  // Dynamically generate filter options from unique device_ids in the data
+  const [cadetSectorFilter, setCadetSectorFilter] = useState({});
+
+  useEffect(() => {
+    const ids = Array.from(new Set((data || []).map(d => d.device_id))).sort();
+    setCadetSectorFilter(prev => {
+      // Only update if the set of IDs has changed
+      const prevIds = Object.keys(prev).sort();
+      const same = ids.length === prevIds.length && ids.every((id, i) => id === prevIds[i]);
+      if (same) return prev;
+      const updated = {};
+      ids.forEach(id => { updated[id] = true; });
+      return updated;
+    });
+  }, [data]);
+
   // Filter states
   const [cadetFilter, setCadetFilter] = useState(initializeCadetFilter(playerNames));
   const [xVarFilter, setXVarFilter] = useState({});
@@ -67,10 +83,10 @@ export function usePlotState(plotLabel, logAction) {
   // Histogram X variable toggle handler
   const handleHistogramXVariableToggle = (variable) => {
     const isSelected = xVars.includes(variable);
-    const newXVars = isSelected 
-      ? xVars.filter(x => x !== variable) 
+    const newXVars = isSelected
+      ? xVars.filter(x => x !== variable)
       : [...xVars, variable];
-    
+
     setXVars(newXVars);
     if (logAction) {
       logAction(`${plotLabel} histogram x variable toggled: ${variable}`);
@@ -116,13 +132,13 @@ export function usePlotState(plotLabel, logAction) {
     cadetFilter,
     xVarFilter,
     yVarFilter,
-    
+
     // Config
     config,
     allowedMatrix,
     variables,
     PlotRenderer,
-    
+
     // Handlers
     handlePlotTypeChange,
     handleXVariableToggle,

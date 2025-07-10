@@ -1,42 +1,27 @@
 import React from 'react';
 import { ResponsiveBar } from "@nivo/bar";
+import { getLocalTimeOnlyString } from '../utils/timeUtils';
 
-const HistogramPlot = ({ data = [] }) => {
-  // Transform data for histogram plot if provided
+const variableMap = {
+  'Infected Sectors': item => item.infected_sectors,
+  'Infected Cadets': item => item.infected_cadets,
+};
+
+const HistogramPlot = ({ data = [], xVar = 'Infected Cadets', yVar = 'Frequency' }) => {
   const getHistogramData = () => {
     if (!data || !data.length) return [];
-    
-    // Transform ESP data into histogram format
-    const interactionValues = data.map(item => item.interaction || 0);
-    
-    if (interactionValues.length === 0) return [];
-    
-    // Create bins for histogram
-    const min = Math.min(...interactionValues);
-    const max = Math.max(...interactionValues);
-    const binCount = Math.min(10, Math.ceil(Math.sqrt(interactionValues.length)));
-    const binSize = (max - min) / binCount;
-    
-    const bins = {};
-    for (let i = 0; i < binCount; i++) {
-      const binStart = min + i * binSize;
-      const binEnd = min + (i + 1) * binSize;
-      const binLabel = `${binStart.toFixed(1)}-${binEnd.toFixed(1)}`;
-      bins[binLabel] = 0;
-    }
-    
-    // Count values in each bin
-    interactionValues.forEach(value => {
-      const binIndex = Math.min(Math.floor((value - min) / binSize), binCount - 1);
-      const binStart = min + binIndex * binSize;
-      const binEnd = min + (binIndex + 1) * binSize;
-      const binLabel = `${binStart.toFixed(1)}-${binEnd.toFixed(1)}`;
-      bins[binLabel]++;
+    const xAccessor = variableMap[xVar] || (item => item[xVar]);
+    // Count frequency of each unique value
+    const freqMap = {};
+    data.forEach(item => {
+      const xValue = xAccessor(item);
+      if (xValue !== undefined && xValue !== null) {
+        freqMap[xValue] = (freqMap[xValue] || 0) + 1;
+      }
     });
-    
-    return Object.entries(bins).map(([range, count]) => ({
-      range: range,
-      frequency: count
+    return Object.entries(freqMap).map(([range, frequency]) => ({
+      range,
+      frequency
     }));
   };
 
