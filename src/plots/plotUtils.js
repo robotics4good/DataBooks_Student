@@ -48,25 +48,55 @@ export function initializeCadetFilter(playerNames) {
  * @param {Array} data - Raw data array
  * @param {Array} xVars - Selected X variables
  * @param {Array} yVars - Selected Y variables
- * @param {Object} cadetFilter - Cadet and sector filter object (keys: device IDs, values: boolean)
+ * @param {Object} cadetFilter - Cadet filter object (keys: device IDs, values: boolean)
+ * @param {Object} sectorFilter - Sector filter object (keys: sector IDs, values: boolean)
  * @returns {Array} - Array of series objects for plotting
  */
-export function filterData(data, xVars, yVars, cadetFilter) {
+export function filterData(data, xVars, yVars, cadetFilter, sectorFilter) {
   if (!Array.isArray(data)) return [];
   // Determine if filter should be applied
-  const deviceVars = ["Infected Cadets", "Healthy Cadets", "Infected Sectors", "Healthy Sectors"];
-  const xIsDevice = xVars && xVars.length > 0 && deviceVars.includes(xVars[0]);
-  const yIsDevice = yVars && yVars.length > 0 && deviceVars.includes(yVars[0]);
+  const cadetVars = ["Infected Cadets", "Healthy Cadets"];
+  const sectorVars = ["Infected Sectors", "Healthy Sectors"];
+  const xIsCadet = xVars && xVars.length > 0 && cadetVars.includes(xVars[0]);
+  const yIsCadet = yVars && yVars.length > 0 && cadetVars.includes(yVars[0]);
+  const xIsSector = xVars && xVars.length > 0 && sectorVars.includes(xVars[0]);
+  const yIsSector = yVars && yVars.length > 0 && sectorVars.includes(yVars[0]);
   let filtered = data;
-  if ((xIsDevice || yIsDevice) && cadetFilter) {
-    // Get all selected device IDs (cadets and/or sectors)
-    const selectedIds = Object.entries(cadetFilter)
+  // Apply cadet filter if relevant
+  if ((xIsCadet || yIsCadet) && cadetFilter) {
+    const selectedCadets = Object.entries(cadetFilter)
       .filter(([id, selected]) => selected)
       .map(([id]) => id);
-    // If no filters are selected, use all device_ids present in data
-    filtered = selectedIds.length > 0
-      ? data.filter(record => selectedIds.includes(record.device_id))
-      : data;
+    if (selectedCadets.length > 0) {
+      filtered = filtered.filter(record => {
+        if (cadetVars.includes(xVars[0]) || cadetVars.includes(yVars[0])) {
+          return selectedCadets.includes(record.device_id);
+        }
+        return true;
+      });
+    }
+  }
+  // Apply sector filter if relevant
+  if ((xIsSector || yIsSector) && sectorFilter) {
+    const selectedSectors = Object.entries(sectorFilter)
+      .filter(([id, selected]) => selected)
+      .map(([id]) => id);
+    if (selectedSectors.length > 0) {
+      filtered = filtered.filter(record => {
+        if (sectorVars.includes(xVars[0]) || sectorVars.includes(yVars[0])) {
+          return selectedSectors.includes(record.device_id);
+        }
+        return true;
+      });
+    }
+  }
+  // After filtering by selected IDs, further filter by current infection status for sector variables
+  if (yVars && yVars.length > 0) {
+    if (yVars[0] === 'Infected Sectors') {
+      filtered = filtered.filter(record => record.infection_status === 1);
+    } else if (yVars[0] === 'Healthy Sectors') {
+      filtered = filtered.filter(record => record.infection_status === 0);
+    }
   }
   // If no x/y vars selected, return empty array (prevents empty plot)
   if (!xVars || !yVars || xVars.length === 0 || yVars.length === 0) return [];

@@ -89,40 +89,51 @@ const LinePlot = (props) => {
       // Use meetingPoints as (x: meeting number, y: minutes since first meeting)
       return [{ id: 'Elapsed Minutes', data: meetingPoints }];
     }
-    // Default: use variableMap, grouped by device_id for ESP data
-    if (
-      (xVar === 'Time' || xVar === 'Meetings Held') &&
-      ['Meetings Held', 'Infected Sectors', 'Infected Cadets', 'Healthy Sectors', 'Healthy Cadets'].includes(yVar)
-    ) {
-      // Group by device_id
-      const grouped = {};
-      data.forEach(item => {
-        if (!grouped[item.device_id]) grouped[item.device_id] = [];
-        grouped[item.device_id].push({
-          x: variableMap[xVar](item),
-          y: variableMap[yVar](item)
+    // NEW: Time binning for all X = 'Time' cases
+    if (xVar === 'Time' && [
+      'Infected Cadets', 'Infected Sectors', 'Healthy Cadets', 'Healthy Sectors'
+    ].includes(yVar)) {
+      // Bin by time
+      const firstTime = new Date(data[0].timestamp);
+      const lastTime = new Date(data[data.length - 1].timestamp);
+      const maxMinutes = Math.min(90, Math.ceil((lastTime - firstTime) / 60000));
+      const numBins = 10;
+      const binSizeMs = (90 * 60000) / numBins; // 90 minutes max, 10 bins
+      // Create bins
+      const bins = [];
+      for (let i = 0; i <= numBins; i++) {
+        const binTime = new Date(firstTime.getTime() + i * binSizeMs);
+        bins.push(binTime);
+      }
+      // For each bin, count the number of Y variable present at that time
+      // For each device, find the latest record up to that bin
+      const deviceIds = Array.from(new Set(data.map(d => d.device_id)));
+      const series = [{ id: yVar, data: [] }];
+      for (let i = 0; i < bins.length; i++) {
+        const binEnd = bins[i];
+        // For each device, get the latest record up to this bin
+        let count = 0;
+        deviceIds.forEach(id => {
+          const records = data.filter(d => d.device_id === id && d.localTime <= binEnd);
+          if (records.length > 0) {
+            const latest = records[records.length - 1];
+            if (yVar === 'Infected Cadets' && latest.infected_cadets) count++;
+            if (yVar === 'Infected Sectors' && latest.infected_sectors) count++;
+            if (yVar === 'Healthy Cadets' && latest.healthy_cadets) count++;
+            if (yVar === 'Healthy Sectors' && latest.healthy_sectors) count++;
+          }
         });
-      });
-      return Object.entries(grouped).map(([id, points]) => ({
-        id,
-        data: points.filter(pt => typeof pt.y === 'number' && !isNaN(pt.y))
-      }));
+        series[0].data.push({ x: getLocalTimeOnlyString(binEnd), y: count });
+      }
+      return series;
+    }
+    // For all other allowed combinations, use the filtered data as provided
+    // Group by label (id) if present, otherwise single series
+    if (data.length > 0 && data[0].label && data[0].data) {
+      return data.map(series => ({ id: series.label, data: series.data }));
     }
     // Fallback: single line for all data
-    const xAccessor = variableMap[xVar] || (item => item[xVar]);
-    const yAccessor = variableMap[yVar] || (item => item[yVar]);
-    const transformedData = data.map(item => {
-      let yVal = yAccessor(item);
-      if (typeof yVal !== 'number' || isNaN(yVal)) yVal = 0;
-      return {
-        x: xAccessor(item),
-        y: yVal
-      };
-    }).filter(pt => typeof pt.y === 'number' && !isNaN(pt.y));
-    return [{
-      id: 'ESP Data',
-      data: transformedData
-    }];
+    return [{ id: 'ESP Data', data }];
   };
 
   const lineData = getLineData();

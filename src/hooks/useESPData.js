@@ -139,13 +139,15 @@ export function useESPData(enableRealTime = false) {
           const isInfected = record.infection_status === 1;
           const infected_cadets = isCadet && isInfected ? record.device_id : null;
           const infected_sectors = !isCadet && isInfected ? record.device_id : null;
+          const healthy_sectors = !isCadet && record.infection_status === 0 ? record.device_id : null;
           return {
             ...record,
             hour,
             session_half,
             meetings_held,
             infected_cadets,
-            infected_sectors
+            infected_sectors,
+            healthy_sectors
           };
         });
         setEspData(normalizedData);
@@ -234,13 +236,15 @@ export function useESPData(enableRealTime = false) {
           const isInfected = record.infection_status === 1;
           const infected_cadets = isCadet && isInfected ? record.device_id : null;
           const infected_sectors = !isCadet && isInfected ? record.device_id : null;
+          const healthy_sectors = !isCadet && record.infection_status === 0 ? record.device_id : null;
           return {
             ...record,
             hour,
             session_half,
             meetings_held,
             infected_cadets,
-            infected_sectors
+            infected_sectors,
+            healthy_sectors
           };
         });
         if (isMounted) setEspData(normalizedData);

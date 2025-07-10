@@ -98,8 +98,8 @@ const PlotComponent = ({ plotLabel, theme, data, logAction, rawData, allInfected
     fetchData();
   }, [plotType, xVars, yVars, sessionId]);
 
-  // Filter data for the selected variables and person filter
-  const filteredData = filterData(data, xVars, yVars, cadetFilter);
+  // Filter data for the selected variables and person/sector filter
+  const filteredData = filterData(data, xVars, yVars, cadetFilter, sectorFilter);
 
   // Professional, robust empty data check
   const hasData = Array.isArray(filteredData) && filteredData.some(series => Array.isArray(series.data) && series.data.length > 0);
