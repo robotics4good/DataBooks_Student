@@ -117,7 +117,7 @@ const getGameDisplayName = (selectedGame) => {
 
 const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onToggleLayout, isDualScreen }) => {
   const { logAction } = useUserLog();
-  const { espData, loading, error } = useESPData();
+  const { espData, loading, error, allInfectedCadets, allHealthyCadets, allInfectedSectors, allHealthySectors } = useESPData();
   const [activeTab, setActiveTab] = useState('journal'); // Default to 'journal' tab
   
   // Plot state tracking
@@ -343,6 +343,10 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
                   plotLabel="DataPlot 1"
                   data={espData}
                   logAction={logAction}
+                  allInfectedCadets={allInfectedCadets}
+                  allHealthyCadets={allHealthyCadets}
+                  allInfectedSectors={allInfectedSectors}
+                  allHealthySectors={allHealthySectors}
                 />
               </div>
               {/* Right Plot */}
@@ -351,6 +355,10 @@ const SingleScreenLayout = ({ selectedGame, handleBackToGames, playerNames, onTo
                   plotLabel="DataPlot 2"
                   data={espData}
                   logAction={logAction}
+                  allInfectedCadets={allInfectedCadets}
+                  allHealthyCadets={allHealthyCadets}
+                  allInfectedSectors={allInfectedSectors}
+                  allHealthySectors={allHealthySectors}
                 />
               </div>
             </div>

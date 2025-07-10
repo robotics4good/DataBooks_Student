@@ -53,18 +53,23 @@ export function initializeCadetFilter(playerNames) {
  */
 export function filterData(data, xVars, yVars, cadetFilter) {
   if (!Array.isArray(data)) return [];
-  // Get all selected device IDs (cadets and/or sectors)
-  const selectedIds = cadetFilter
-    ? Object.entries(cadetFilter).filter(([id, selected]) => selected).map(([id]) => id)
-    : [];
-  // If no filters are selected, use all device_ids present in data
-  const filtered = selectedIds.length > 0
-    ? data.filter(record => selectedIds.includes(record.device_id))
-    : data;
-
+  // Determine if filter should be applied
+  const deviceVars = ["Infected Cadets", "Healthy Cadets", "Infected Sectors", "Healthy Sectors"];
+  const xIsDevice = xVars && xVars.length > 0 && deviceVars.includes(xVars[0]);
+  const yIsDevice = yVars && yVars.length > 0 && deviceVars.includes(yVars[0]);
+  let filtered = data;
+  if ((xIsDevice || yIsDevice) && cadetFilter) {
+    // Get all selected device IDs (cadets and/or sectors)
+    const selectedIds = Object.entries(cadetFilter)
+      .filter(([id, selected]) => selected)
+      .map(([id]) => id);
+    // If no filters are selected, use all device_ids present in data
+    filtered = selectedIds.length > 0
+      ? data.filter(record => selectedIds.includes(record.device_id))
+      : data;
+  }
   // If no x/y vars selected, return empty array (prevents empty plot)
   if (!xVars || !yVars || xVars.length === 0 || yVars.length === 0) return [];
-
   // Mapping from UI variable names to data field names
   const variableFieldMap = {
     "Time": "localTime", // Use localTime (Date object in San Diego time)
@@ -74,7 +79,6 @@ export function filterData(data, xVars, yVars, cadetFilter) {
     "Healthy Cadets": "healthy_cadets",
     "Healthy Sectors": "healthy_sectors"
   };
-
   // Group by device_id
   const grouped = {};
   for (const record of filtered) {

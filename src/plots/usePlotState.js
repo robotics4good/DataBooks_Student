@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import { playerNames, plotConfigs } from './plotConfigs';
 import { initializeVariableFilters, initializeCadetFilter } from './plotUtils';
 
+const sectorIds = ["T1","T2","T3","T4","T5","T6"];
+
 /**
  * Custom hook for managing plot component state
  * @param {string} plotLabel - Label for the plot (for logging)
@@ -33,6 +35,11 @@ export function usePlotState(plotLabel, logAction, data = []) {
 
   // Filter states
   const [cadetFilter, setCadetFilter] = useState(initializeCadetFilter(playerNames));
+  const [sectorFilter, setSectorFilter] = useState(() => {
+    const obj = {};
+    sectorIds.forEach(id => { obj[id] = true; });
+    return obj;
+  });
   const [xVarFilter, setXVarFilter] = useState({});
   const [yVarFilter, setYVarFilter] = useState({});
 
@@ -124,12 +131,35 @@ export function usePlotState(plotLabel, logAction, data = []) {
     }
   };
 
+  // Sector filter toggle handler
+  const handleSectorFilterToggle = (name) => {
+    const newValue = !sectorFilter[name];
+    setSectorFilter(prev => ({ ...prev, [name]: newValue }));
+    if (logAction) {
+      logAction(`${plotLabel} sector filter toggled: ${name} ${newValue ? 'selected' : 'deselected'}`);
+    }
+  };
+  // Sector filter select all/deselect all handlers
+  const onSelectAllSectors = () => {
+    setSectorFilter(sectorIds.reduce((acc, name) => ({ ...acc, [name]: true }), {}));
+    if (logAction) {
+      logAction(`${plotLabel} sector filter: select all`);
+    }
+  };
+  const onDeselectAllSectors = () => {
+    setSectorFilter(sectorIds.reduce((acc, name) => ({ ...acc, [name]: false }), {}));
+    if (logAction) {
+      logAction(`${plotLabel} sector filter: deselect all`);
+    }
+  };
+
   return {
     // State
     plotType,
     xVars,
     yVars,
     cadetFilter,
+    sectorFilter,
     xVarFilter,
     yVarFilter,
 
@@ -146,7 +176,10 @@ export function usePlotState(plotLabel, logAction, data = []) {
     handleHistogramXVariableToggle,
     handlePieVariableSelect,
     handleCadetFilterToggle,
+    handleSectorFilterToggle,
     onSelectAllCadets,
     onDeselectAllCadets,
+    onSelectAllSectors,
+    onDeselectAllSectors,
   };
 } 

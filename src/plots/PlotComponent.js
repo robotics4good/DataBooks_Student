@@ -6,13 +6,14 @@ import PlotControls from './PlotControls';
 import { fetchMeetingLogTimestamps } from '../hooks/useESPData';
 import { useEffect, useState } from 'react';
 
-const PlotComponent = ({ plotLabel, theme, data, logAction, rawData }) => {
+const PlotComponent = ({ plotLabel, theme, data, logAction, rawData, allInfectedCadets, allHealthyCadets, allInfectedSectors, allHealthySectors }) => {
   // Use custom hook for state management
   const {
     plotType,
     xVars,
     yVars,
     cadetFilter,
+    sectorFilter,
     allowedMatrix,
     variables,
     PlotRenderer,
@@ -22,8 +23,11 @@ const PlotComponent = ({ plotLabel, theme, data, logAction, rawData }) => {
     handleHistogramXVariableToggle,
     handlePieVariableSelect,
     handleCadetFilterToggle,
+    handleSectorFilterToggle,
     onSelectAllCadets,
     onDeselectAllCadets,
+    onSelectAllSectors,
+    onDeselectAllSectors,
   } = usePlotState(plotLabel, logAction, data);
 
   // State for MeetingLogs plot data
@@ -168,6 +172,7 @@ const PlotComponent = ({ plotLabel, theme, data, logAction, rawData }) => {
         xVars={xVars}
         yVars={yVars}
         personFilter={cadetFilter}
+        sectorFilter={sectorFilter}
         allowedMatrix={allowedMatrix}
         plotLabel={plotLabel}
         onPlotTypeChange={handlePlotTypeChange}
@@ -176,9 +181,16 @@ const PlotComponent = ({ plotLabel, theme, data, logAction, rawData }) => {
         onHistogramXVariableToggle={handleHistogramXVariableToggle}
         onPieVariableSelect={handlePieVariableSelect}
         onPersonFilterToggle={handleCadetFilterToggle}
+        onSectorFilterToggle={handleSectorFilterToggle}
         onSelectAllDevices={onSelectAllCadets}
         onDeselectAllDevices={onDeselectAllCadets}
+        onSelectAllSectors={onSelectAllSectors}
+        onDeselectAllSectors={onDeselectAllSectors}
         rawData={data}
+        allInfectedCadets={allInfectedCadets}
+        allHealthyCadets={allHealthyCadets}
+        allInfectedSectors={allInfectedSectors}
+        allHealthySectors={allHealthySectors}
       />
     </div>
   );

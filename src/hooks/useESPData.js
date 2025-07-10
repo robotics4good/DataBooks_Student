@@ -22,6 +22,35 @@ export function useESPData(enableRealTime = false) {
   const [error, setError] = useState(null);
   const latestTimestampRef = useRef(null);
 
+  // Persistent sets for all healthy/infected cadets and sectors
+  const [allInfectedCadets, setAllInfectedCadets] = useState(new Set());
+  const [allHealthyCadets, setAllHealthyCadets] = useState(new Set());
+  const [allInfectedSectors, setAllInfectedSectors] = useState(new Set());
+  const [allHealthySectors, setAllHealthySectors] = useState(new Set());
+
+  // Helper to update persistent sets
+  const updateStatusSets = (data) => {
+    const infectedCadets = new Set();
+    const healthyCadets = new Set();
+    const infectedSectors = new Set();
+    const healthySectors = new Set();
+    (data || []).forEach(d => {
+      const isCadet = playerNames.includes(d.device_id);
+      if (isCadet) {
+        if (d.infected_cadets) infectedCadets.add(d.device_id);
+        if (d.healthy_cadets) healthyCadets.add(d.device_id);
+      } else {
+        // Sector logic: use infection_status
+        if (d.infection_status === 1) infectedSectors.add(d.device_id);
+        if (d.infection_status === 0) healthySectors.add(d.device_id);
+      }
+    });
+    setAllInfectedCadets(infectedCadets);
+    setAllHealthyCadets(healthyCadets);
+    setAllInfectedSectors(infectedSectors);
+    setAllHealthySectors(healthySectors);
+  };
+
   // Helper to fetch meeting logs for the current session
   const fetchMeetingLogs = async (sessionId) => {
     try {
@@ -120,6 +149,7 @@ export function useESPData(enableRealTime = false) {
           };
         });
         setEspData(normalizedData);
+        updateStatusSets(normalizedData);
       } // else: no data, do not update
     } catch (err) {
       console.error("Error processing ESP or meeting data:", err);
@@ -144,6 +174,7 @@ export function useESPData(enableRealTime = false) {
       try {
         if (!data) {
           if (isMounted) setEspData([]);
+          updateStatusSets([]);
           return;
         }
         // Remove all proximity_mask/proximity_count logic
@@ -213,8 +244,9 @@ export function useESPData(enableRealTime = false) {
           };
         });
         if (isMounted) setEspData(normalizedData);
+        updateStatusSets(normalizedData);
       } catch (err) {
-        setError('Error normalizing ESP data: ' + err.message);
+        if (isMounted) setError('Error normalizing ESP data: ' + err.message);
       }
     };
 
@@ -399,15 +431,17 @@ export function useESPData(enableRealTime = false) {
     espData,
     loading,
     error,
-    
+    // Persistent sets for filters
+    allInfectedCadets,
+    allHealthyCadets,
+    allInfectedSectors,
+    allHealthySectors,
     // Manual fetch function
     fetchESPData: fetchAllData, // Renamed to avoid conflict with new fetchAllData
-    
     // Plot data functions
     getPlotData,
     getAvailableVariables,
     getDeviceIds,
-    
     // Statistics
     totalPackets,
     uniqueStudents,

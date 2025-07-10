@@ -36,24 +36,57 @@ const PlotControls = ({
   onSectorFilterToggle, // new
   onSelectAllDevices,
   onDeselectAllDevices,
-  onSelectAllSectors, // new
-  onDeselectAllSectors, // new
-  rawData // <-- add rawData prop to get current ESP data
+  onSelectAllSectors,
+  onDeselectAllSectors,
+  rawData, // <-- add rawData prop to get current ESP data
+  allInfectedCadets,
+  allHealthyCadets,
+  allInfectedSectors,
+  allHealthySectors
 }) => {
-  // Dynamically determine present cadet IDs from ESP data (all unique device_ids)
-  const presentCadetIds = Array.from(new Set(
+  // Use persistent sets for filter options
+  // Only show cadet device IDs in the cadet filter (exclude sector IDs)
+  const presentCadetIds = React.useMemo(() => Array.from(new Set(
     (rawData || [])
       .map(d => d.device_id)
-  ));
-  const presentSectorIds = Array.from(new Set(
-    (rawData || [])
-      .map(d => d.device_id)
-      .filter(id => sectorIds.includes(id))
-  ));
-  // Ensure personFilter is always defined
-  const safePersonFilter = personFilter || presentCadetIds.reduce((acc, name) => ({ ...acc, [name]: false }), {});
-  // Ensure sectorFilter is always defined
-  const safeSectorFilter = sectorFilter || presentSectorIds.reduce((acc, name) => ({ ...acc, [name]: false }), {});
+      .filter(id => !sectorIds.includes(id))
+  )), [rawData]);
+  const presentSectorIds = React.useMemo(() => sectorIds.slice(), []);
+  // For Infected Cadets, only show cadets in allInfectedCadets
+  const infectedCadetIds = React.useMemo(() => {
+    if (!xVars.concat(yVars).includes('Infected Cadets')) return presentCadetIds;
+    return Array.from(allInfectedCadets || []);
+  }, [allInfectedCadets, presentCadetIds, xVars, yVars]);
+  // For Healthy Cadets, only show cadets in allHealthyCadets
+  const healthyCadetIds = React.useMemo(() => {
+    if (!xVars.concat(yVars).includes('Healthy Cadets')) return presentCadetIds;
+    return Array.from(allHealthyCadets || []);
+  }, [allHealthyCadets, presentCadetIds, xVars, yVars]);
+  // For Infected Sectors, only show sectors in allInfectedSectors
+  const infectedSectorIds = React.useMemo(() => {
+    if (!xVars.concat(yVars).includes('Infected Sectors')) return presentSectorIds;
+    return Array.from(allInfectedSectors || []);
+  }, [allInfectedSectors, presentSectorIds, xVars, yVars]);
+  // For Healthy Sectors, only show sectors in allHealthySectors
+  const healthySectorIds = React.useMemo(() => {
+    if (!xVars.concat(yVars).includes('Healthy Sectors')) return presentSectorIds;
+    return Array.from(allHealthySectors || []);
+  }, [allHealthySectors, presentSectorIds, xVars, yVars]);
+  // Use filtered cadet IDs for filter
+  let filteredCadetIds = presentCadetIds;
+  if (xVars.concat(yVars).includes('Infected Cadets')) filteredCadetIds = infectedCadetIds;
+  else if (xVars.concat(yVars).includes('Healthy Cadets')) filteredCadetIds = healthyCadetIds;
+  // Use filtered sector IDs for filter
+  let filteredSectorIds = presentSectorIds;
+  if (xVars.concat(yVars).includes('Infected Sectors')) filteredSectorIds = infectedSectorIds;
+  else if (xVars.concat(yVars).includes('Healthy Sectors')) filteredSectorIds = healthySectorIds;
+  // Ensure sectorFilter is always defined and only includes present IDs
+  const safeSectorFilter = React.useMemo(() => {
+    const base = sectorFilter || {};
+    const filtered = {};
+    filteredSectorIds.forEach(name => { filtered[name] = base[name] || false; });
+    return filtered;
+  }, [sectorFilter, filteredSectorIds]);
   // Show cadet filter only if relevant variable is selected
   const cadetRelevantVars = ["Infected Cadets", "Healthy Cadets"];
   const showCadetFilter = xVars.concat(yVars).some(v => cadetRelevantVars.includes(v));
@@ -207,18 +240,18 @@ const PlotControls = ({
               <button type="button" onClick={() => { logAction({ type: 'plot_interaction', action: 'cadet_filter_deselect_all', details: { plotLabel } }); onDeselectAllDevices(); }} style={{ fontSize: '0.95rem', padding: '0.2rem 0.7rem', borderRadius: '4px', border: '1px solid var(--panel-border)', background: 'var(--cream-panel)', cursor: 'pointer' }}>Deselect All</button>
             </div>
             <div className={styles.deviceFilterOptions}>
-              {presentCadetIds.length === 0 ? (
+              {filteredCadetIds.length === 0 ? (
                 <div className={styles.deviceFilterEmpty}>
                   No devices detected
                 </div>
               ) : (
-                presentCadetIds.map(name => (
+                filteredCadetIds.map(name => (
                   <label key={name} className={styles.deviceFilterOption}>
                     <input
                       type="checkbox"
-                      checked={!!safePersonFilter[name]}
+                      checked={!!personFilter[name]}
                       onChange={() => {
-                        logAction({ type: 'plot_interaction', action: 'cadet_filter_toggled', details: { plotLabel, cadet: name, selected: !safePersonFilter[name] } });
+                        logAction({ type: 'plot_interaction', action: 'cadet_filter_toggled', details: { plotLabel, cadet: name, selected: !personFilter[name] } });
                         onPersonFilterToggle(name);
                       }}
                       className={styles.deviceFilterCheckbox}
@@ -238,18 +271,18 @@ const PlotControls = ({
               <button type="button" onClick={() => { logAction({ type: 'plot_interaction', action: 'sector_filter_deselect_all', details: { plotLabel } }); onDeselectAllSectors(); }} style={{ fontSize: '0.95rem', padding: '0.2rem 0.7rem', borderRadius: '4px', border: '1px solid var(--panel-border)', background: 'var(--cream-panel)', cursor: 'pointer' }}>Deselect All</button>
             </div>
             <div className={styles.deviceFilterOptions}>
-              {presentSectorIds.length === 0 ? (
+              {filteredSectorIds.length === 0 ? (
                 <div className={styles.deviceFilterEmpty}>
                   No sectors detected
                 </div>
               ) : (
-                presentSectorIds.map(name => (
+                filteredSectorIds.map(name => (
                   <label key={name} className={styles.deviceFilterOption}>
                     <input
                       type="checkbox"
-                      checked={!!safeSectorFilter[name]}
+                      checked={!!sectorFilter[name]}
                       onChange={() => {
-                        logAction({ type: 'plot_interaction', action: 'sector_filter_toggled', details: { plotLabel, sector: name, selected: !safeSectorFilter[name] } });
+                        logAction({ type: 'plot_interaction', action: 'sector_filter_toggled', details: { plotLabel, sector: name, selected: !sectorFilter[name] } });
                         onSectorFilterToggle(name);
                       }}
                       className={styles.deviceFilterCheckbox}

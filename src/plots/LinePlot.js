@@ -89,7 +89,26 @@ const LinePlot = (props) => {
       // Use meetingPoints as (x: meeting number, y: minutes since first meeting)
       return [{ id: 'Elapsed Minutes', data: meetingPoints }];
     }
-    // Default: use variableMap
+    // Default: use variableMap, grouped by device_id for ESP data
+    if (
+      (xVar === 'Time' || xVar === 'Meetings Held') &&
+      ['Meetings Held', 'Infected Sectors', 'Infected Cadets', 'Healthy Sectors', 'Healthy Cadets'].includes(yVar)
+    ) {
+      // Group by device_id
+      const grouped = {};
+      data.forEach(item => {
+        if (!grouped[item.device_id]) grouped[item.device_id] = [];
+        grouped[item.device_id].push({
+          x: variableMap[xVar](item),
+          y: variableMap[yVar](item)
+        });
+      });
+      return Object.entries(grouped).map(([id, points]) => ({
+        id,
+        data: points.filter(pt => typeof pt.y === 'number' && !isNaN(pt.y))
+      }));
+    }
+    // Fallback: single line for all data
     const xAccessor = variableMap[xVar] || (item => item[xVar]);
     const yAccessor = variableMap[yVar] || (item => item[yVar]);
     const transformedData = data.map(item => {
