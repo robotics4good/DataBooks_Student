@@ -1,5 +1,5 @@
 import { db, ref, set, get } from '../firebase';
-import { getSanDiegoIsoString } from '../utils/timeUtils';
+import { getLocalIsoString } from '../utils/timeUtils';
 
 // Sanitize for Firebase keys
 function sanitize(str) {
@@ -50,7 +50,7 @@ function flushLogs() {
     return;
   }
   // Use flush time as the batch key
-  const flushTimestamp = sanitize(getSanDiegoIsoString());
+  const flushTimestamp = sanitize(getLocalIsoString());
   const path = `sessions/${sessionId}/UserLogs/${userId}/${flushTimestamp}`;
   // Write the entire batch as an array (no per-log writes)
   set(ref(db, path), logBuffer.slice()).catch(() => {});
@@ -83,7 +83,7 @@ function logAction({ type, action, details }) {
     const userId = getUserId();
     const sessionId = getSessionId();
     if (!userId || !sessionId) return;
-    const timestamp = getSanDiegoIsoString();
+    const timestamp = getLocalIsoString();
     const log = {
       type,
       action,

@@ -1,8 +1,9 @@
 // ESPDataPlot.js - Plot component for ESP data from Firebase
+// All time handling uses local device time only
 import React from 'react';
 import PlotComponent from './PlotComponent';
 import styles from './PlotComponent.module.css';
-import { formatSanDiegoTime } from '../utils/timeUtils';
+import { formatLocalTime } from '../utils/timeUtils';
 
 const ESPDataPlot = ({ plotLabel = "ESP Data", espData = [], loading = false, error = null }) => {
   // Custom log action for ESP data plots
@@ -62,15 +63,7 @@ const ESPDataPlot = ({ plotLabel = "ESP Data", espData = [], loading = false, er
     );
   }
 
-  // Transform ESP data for the plot component
-  const transformedData = [{
-    id: 'ESP Data',
-    data: espData.map(item => ({
-      x: item.timestamp ? formatSanDiegoTime(item.timestamp) : item.timestamp,
-      y: item.interaction || 0
-    }))
-  }];
-
+  // Pass the raw, normalized espData directly to PlotComponent
   return (
     <div className={styles.plotContainer}>
       {/* Data Summary */}
@@ -85,14 +78,14 @@ const ESPDataPlot = ({ plotLabel = "ESP Data", espData = [], loading = false, er
         <strong>ESP Data Summary:</strong> {espData.length} packets
         {espData.length > 0 && (
           <span style={{ marginLeft: '12px' }}>
-            Time range: {formatSanDiegoTime(Math.min(...espData.map(item => item.timestamp || 0)))} - {formatSanDiegoTime(Math.max(...espData.map(item => item.timestamp || 0)))}
+            Time range: {formatLocalTime(new Date(Math.min(...espData.map(item => new Date(item.timestamp).getTime() || 0))))} - {formatLocalTime(new Date(Math.max(...espData.map(item => new Date(item.timestamp).getTime() || 0))))}
           </span>
         )}
       </div>
       {/* Plot Component */}
       <PlotComponent
         plotLabel={plotLabel}
-        data={transformedData}
+        data={espData} // <-- pass raw, normalized ESP data
         logAction={logAction}
       />
     </div>

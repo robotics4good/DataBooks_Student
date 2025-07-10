@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db, ref, push, set, get } from "./firebase";
-import { getSanDiegoIsoString } from './utils/timeUtils';
+import { getLocalIsoString } from './utils/timeUtils';
 import { logAction as batchedLogAction } from "./services/userActionLogger";
 
 const UserLogContext = createContext();
@@ -50,10 +50,10 @@ export const UserLogProvider = ({ children }) => {
   };
 
   // Remove the local logAction and use batchedLogAction for all logging
-  // Make logAction async to await the NIST time
+  // Make logAction async to use local device time
   const logAction = async (type, details) => {
     if (!loggingEnabled) return;
-    const timestamp = getSanDiegoIsoString();
+    const timestamp = getLocalIsoString();
     const cleanDetails = details ?? "";
     const action = {
       id: userId,

@@ -4,7 +4,7 @@ import { usePlotState } from './usePlotState';
 import { filterData } from './plotUtils';
 import PlotControls from './PlotControls';
 
-const PlotComponent = ({ plotLabel, theme, data, logAction }) => {
+const PlotComponent = ({ plotLabel, theme, data, logAction, rawData }) => {
   // Use custom hook for state management
   const {
     plotType,
@@ -76,6 +76,7 @@ const PlotComponent = ({ plotLabel, theme, data, logAction }) => {
         onPersonFilterToggle={handleCadetFilterToggle}
         onSelectAllDevices={onSelectAllCadets}
         onDeselectAllDevices={onDeselectAllCadets}
+        rawData={rawData}
       />
     </div>
   );

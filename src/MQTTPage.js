@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ResponsiveLine } from "@nivo/line";
 import mqtt from "mqtt";
 import { DateTime } from 'luxon';
-import { getSanDiegoTime } from './utils/timeUtils';
+import { getLocalTime } from './utils/timeUtils';
 
 const MQTT_URL = "ws://broker.emqx.io:8083/mqtt";
 const TOPIC = "test/topic";
@@ -28,7 +28,7 @@ const GamePage = () => {
           ...series,
           data: [
             ...series.data.slice(-19),
-            { x: getSanDiegoTime().toLocaleString(DateTime.TIME_SIMPLE), y: value }
+            { x: getLocalTime().toLocaleTimeString(), y: value }
           ]
         }))
       );

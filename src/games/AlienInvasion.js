@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { useESPData } from "../hooks/useESPData";
 import { useUserLog } from "../UserLog";
 import PlotComponent from "../plots/PlotComponent";
-import { getSanDiegoTime } from '../utils/timeUtils';
+import { getLocalTime } from '../utils/timeUtils';
 
 // @param {string} sessionId - Unique identifier for this game session (passed from parent)
 const AlienInvasion = () => {
@@ -39,7 +39,7 @@ const AlienInvasion = () => {
   useEffect(() => {
     if (gameState === 'playing' && espData.length > 0) {
       const newShips = espData.slice(-5).map((data, index) => ({
-        id: `alien_${getSanDiegoTime().toMillis()}_${index}`,
+        id: `alien_${getLocalTime().getTime()}_${index}`,
         x: Math.random() * 80 + 10,
         y: Math.random() * 80 + 10,
         intensity: data.status || 0,
@@ -157,6 +157,9 @@ const AlienInvasion = () => {
       </div>
     );
   }
+
+  // Debug: print ESP data to console
+  console.log("ESP DATA FOR DEBUGGING:", espData);
 
   // Game UI components
   const GameControls = () => (
@@ -284,12 +287,13 @@ const AlienInvasion = () => {
   );
 
   return (
-        <div style={{ 
+    <div style={{ 
       padding: 20,
       height: '100vh',
       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
       position: 'relative'
     }}>
+      {/* Remove any usage of getTimeWarning in the file */}
       <GameControls />
       <GameButtons />
       
@@ -312,6 +316,7 @@ const AlienInvasion = () => {
           plotType="line"
           title="ESP Data Over Time"
           onAction={(action) => logAction(`AlienInvasion plot: ${action}`)}
+          rawData={espData}
         />
       </div>
     </div>

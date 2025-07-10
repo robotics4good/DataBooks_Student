@@ -168,6 +168,13 @@
   accent-color: var(--accent-green);
 }
 
+.deviceFilterEmpty {
+  color: var(--text-dark);
+  font-weight: normal;
+  margin-bottom: 0.5rem;
+  text-align: left;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .variableOptionsContainer {

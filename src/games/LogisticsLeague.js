@@ -5,11 +5,11 @@ import ScatterPlot from '../plots/ScatterPlot';
 import PiePlot from '../plots/PiePlot';
 import BarPlot from '../plots/BarPlot';
 import HistogramPlot from '../plots/HistogramPlot';
-import { getSanDiegoTime } from '../utils/timeUtils';
+import { getLocalTime } from '../utils/timeUtils';
 
 const LogisticsLeague = () => {
   // Generate unique session ID for this game instance
-  const sessionId = `logistics_league_${getSanDiegoTime().toMillis()}_${Math.random().toString(36).substr(2, 9)}`;
+  const sessionId = `logistics_league_${getLocalTime().getTime()}_${Math.random().toString(36).substr(2, 9)}`;
   
   // Game state
   const [gameState, setGameState] = useState('waiting');

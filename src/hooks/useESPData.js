@@ -1,8 +1,8 @@
 // useESPData.js - Custom hook for fetching and transforming ESP data from Firebase
+// All time handling uses local device time only
 import { useState, useEffect, useRef } from 'react';
 import { db, ref, get, onValue } from '../firebase';
-import { formatSanDiegoTime, timeService, getSanDiegoIsoString, getSanDiegoTimeOnlyString } from '../utils/timeUtils';
-import { toZonedTime } from 'date-fns-tz';
+import { formatLocalTime, getLocalIsoString, getLocalTimeOnlyString } from '../utils/timeUtils';
 import { playerNames } from '../plots/plotConfigs';
 
 /**
@@ -23,10 +23,10 @@ export function useESPData(enableRealTime = false) {
       const snapshot = await get(meetingLogsRef);
       const logs = snapshot.val();
       if (!logs) return [];
-      // Convert to array and San Diego time
+      // Convert to array and local time
       return Object.values(logs).map(log => ({
         ...log,
-        sanDiegoTime: toZonedTime(new Date(log.timestamp), 'America/Los_Angeles')
+        localTime: new Date(log.timestamp)
       })).filter(log => log.event === 'MEETINGEND');
     } catch (err) {
       return [];
@@ -41,74 +41,79 @@ export function useESPData(enableRealTime = false) {
       // 1. Get sessionId
       const sessionIdSnap = await get(ref(db, 'activeSessionId'));
       const sessionId = sessionIdSnap.exists() ? sessionIdSnap.val() : null;
-      // 2. Fetch meeting logs (MEETINGEND only, with San Diego time)
+      // 2. Fetch meeting logs (MEETINGEND only, with local time)
       const meetingEnds = sessionId ? await fetchMeetingLogs(sessionId) : [];
       // 3. Fetch ESP data
       const espDataRef = ref(db, 'readings');
       const snapshot = await get(espDataRef);
       const data = snapshot.val();
       if (data) {
-        // Transform ESP data
+        // Transform ESP data: always use ESP timestamp as anchor (local time)
         const transformedData = Object.keys(data).map(key => {
           const record = { id: key, ...data[key] };
-          let utcDate = new Date(record.timestamp);
-          record.sanDiegoTime = toZonedTime(utcDate, 'America/Los_Angeles');
+          // Parse ESP timestamp as local time
+          let localDate = new Date(record.timestamp);
+          record.localTime = localDate;
           return record;
         });
-        // Get current San Diego time and noon
-        const nowSD = toZonedTime(new Date(), 'America/Los_Angeles');
-        const noonSD = new Date(nowSD);
-        noonSD.setHours(12, 0, 0, 0);
-        // Filter based on current time
-        const filteredData = transformedData.filter(item => {
-          if (!(item.sanDiegoTime instanceof Date) || isNaN(item.sanDiegoTime)) return false;
-          if (nowSD < noonSD) {
-            return item.sanDiegoTime < noonSD;
-      } else {
-            return item.sanDiegoTime >= noonSD;
+        // Sort by ESP local time
+        transformedData.sort((a, b) => (a.localTime - b.localTime));
+        // Deduplicate: remove consecutive records for the same device_id with identical fields (except timestamp)
+        const dedupedData = [];
+        const lastByDevice = {};
+        for (const rec of transformedData) {
+          const dev = rec.device_id;
+          const prev = lastByDevice[dev];
+          // Compare all fields except timestamp
+          const recClone = { ...rec };
+          delete recClone.timestamp;
+          delete recClone.localTime;
+          if (!prev || JSON.stringify(prev) !== JSON.stringify(recClone)) {
+            dedupedData.push(rec);
+            lastByDevice[dev] = { ...recClone };
           }
-        });
-        // Sort by San Diego time
-        filteredData.sort((a, b) => (a.sanDiegoTime - b.sanDiegoTime));
-        // Find the latest timestamp in the new data
-        const latestTimestamp = filteredData.length > 0 ? filteredData[filteredData.length - 1].sanDiegoTime.getTime() : null;
-        // Only update if there is new data (timestamp is newer than last seen)
-        if (latestTimestamp && latestTimestamp !== latestTimestampRef.current) {
-          latestTimestampRef.current = latestTimestamp;
-          // Add derived fields to each record, including meetings_held
-          const normalizedData = filteredData.map(record => {
-            // Count bits set in proximity_mask
-            let proximityCount = 0;
-            if (typeof record.proximity_mask === 'number') {
-              let mask = record.proximity_mask;
-              while (mask) {
-                proximityCount += mask & 1;
-                mask >>= 1;
-      }
-            }
-            const hour = record.sanDiegoTime.getHours();
-            const session_half = hour < 12 ? 'AM' : 'PM';
-            // Remove is_task_event and all task_start/task_end logic
-            // Count meetings held (MEETINGEND events before or at this record's time)
-            const meetings_held = meetingEnds.filter(log => log.sanDiegoTime <= record.sanDiegoTime).length;
-            // Infection status mapping (corrected logic)
-            const isCadet = playerNames.includes(record.device_id);
-            const isInfected = record.infection_status === 1;
-            const infected_cadets = isCadet && isInfected ? record.device_id : null;
-            const infected_sectors = !isCadet && isInfected ? record.device_id : null;
-            return {
-              ...record,
-              proximity_count: proximityCount,
-              hour,
-              session_half,
-              meetings_held,
-              infected_cadets,
-              infected_sectors
-            };
-          });
-          setEspData(normalizedData);
         }
-        // If no new data, do not update espData
+        // Downsample: if a device has >200 records, keep only every Nth record
+        const grouped = {};
+        for (const rec of dedupedData) {
+          if (!grouped[rec.device_id]) grouped[rec.device_id] = [];
+          grouped[rec.device_id].push(rec);
+        }
+        let downsampledData = [];
+        for (const dev in grouped) {
+          const arr = grouped[dev];
+          if (arr.length > 200) {
+            const N = Math.ceil(arr.length / 200);
+            for (let i = 0; i < arr.length; i += N) {
+              downsampledData.push(arr[i]);
+            }
+          } else {
+            downsampledData = downsampledData.concat(arr);
+          }
+        }
+        // Sort again by ESP local time after dedup/downsample
+        downsampledData.sort((a, b) => (a.localTime - b.localTime));
+        // Add derived fields to each record, including meetings_held and session_half (based on ESP time)
+        const normalizedData = downsampledData.map(record => {
+          const hour = record.localTime.getHours();
+          const session_half = hour < 12 ? 'AM' : 'PM';
+          // Count meetings held (MEETINGEND events before or at this record's ESP time)
+          const meetings_held = meetingEnds.filter(log => log.localTime <= record.localTime).length;
+          // Infection status mapping (corrected logic)
+          const isCadet = playerNames.includes(record.device_id);
+          const isInfected = record.infection_status === 1;
+          const infected_cadets = isCadet && isInfected ? record.device_id : null;
+          const infected_sectors = !isCadet && isInfected ? record.device_id : null;
+          return {
+            ...record,
+            hour,
+            session_half,
+            meetings_held,
+            infected_cadets,
+            infected_sectors
+          };
+        });
+        setEspData(normalizedData);
       } // else: no data, do not update
     } catch (err) {
       console.error("Error processing ESP or meeting data:", err);
@@ -135,86 +140,73 @@ export function useESPData(enableRealTime = false) {
           if (isMounted) setEspData([]);
           return;
         }
+        // Remove all proximity_mask/proximity_count logic
+        // Always parse ESP timestamp as UTC, then convert to San Diego time
         const transformedData = Object.keys(data).map(key => {
           const record = { id: key, ...data[key] };
-          // Timestamp validation
-          if (!record.timestamp) return null;
-          const utcDate = new Date(record.timestamp);
-          if (isNaN(utcDate.getTime())) return null;
-          record.sanDiegoTime = toZonedTime(utcDate, 'America/Los_Angeles');
+          // Parse timestamp as UTC, then convert to San Diego time
+          let localDate = new Date(record.timestamp);
+          record.localTime = localDate;
           return record;
-        }).filter(Boolean);
-        // Get current San Diego time and noon
-        const nowSD = toZonedTime(new Date(), 'America/Los_Angeles');
-        const noonSD = new Date(nowSD);
-        noonSD.setHours(12, 0, 0, 0);
-        // Filter based on current time
-        const filteredData = transformedData.filter(item => {
-          if (!(item.sanDiegoTime instanceof Date) || isNaN(item.sanDiegoTime)) return false;
-          if (nowSD < noonSD) {
-            return item.sanDiegoTime < noonSD;
-          } else {
-            return item.sanDiegoTime >= noonSD;
-          }
         });
-        // Sort by San Diego time
-        filteredData.sort((a, b) => (a.sanDiegoTime - b.sanDiegoTime));
-        // Find the latest timestamp in the new data
-        const latestTimestamp = filteredData.length > 0 ? filteredData[filteredData.length - 1].sanDiegoTime.getTime() : null;
-        // Only update if there is new data (timestamp is newer than last seen)
-        if (latestTimestamp && latestTimestamp !== latestTimestampRef.current) {
-          latestTimestampRef.current = latestTimestamp;
-          // New ID definitions
-          const cadetIds = ["S1","S2","S3","S4","S5","S6","S7","S8","S9","S10","S11","S12"];
-          const sectorIds = ["T1","T2","T3","T4","T5","T6"];
-          const ignoreIds = ["CR", "QR"];
-          // Only use IDs present in this session's data
-          const presentCadetIds = Array.from(new Set(filteredData.map(r => r.device_id).filter(id => cadetIds.includes(id))));
-          const presentSectorIds = Array.from(new Set(filteredData.map(r => r.device_id).filter(id => sectorIds.includes(id))));
-          const normalizedData = filteredData
-            .filter(record => !ignoreIds.includes(record.device_id))
-            .map(record => {
-              // Count bits set in proximity_mask
-              let proximityCount = 0;
-              let prox = Number(record.proximity_mask);
-              if (!isNaN(prox) && prox >= 0) {
-                let mask = prox;
-                while (mask) {
-                  proximityCount += mask & 1;
-                  mask >>= 1;
-                }
-              }
-              const hour = record.sanDiegoTime.getHours();
-              const session_half = hour < 12 ? 'AM' : 'PM';
-              // Count meetings held (MEETINGEND events before or at this record's time)
-              const meetings_held = meetingEnds.filter(log => {
-                return log.sanDiegoTime instanceof Date && !isNaN(log.sanDiegoTime) &&
-                  record.sanDiegoTime instanceof Date && !isNaN(record.sanDiegoTime) &&
-                  log.sanDiegoTime <= record.sanDiegoTime;
-              }).length;
-              // Infection status mapping (robust, session-aware)
-              const isCadet = presentCadetIds.includes(record.device_id);
-              const isSector = presentSectorIds.includes(record.device_id);
-              const isInfected = Number(record.infection_status) === 1;
-              const infected_cadets = isCadet && isInfected ? record.device_id : null;
-              const infected_sectors = isSector && isInfected ? record.device_id : null;
-              const healthy_cadets = isCadet && !isInfected ? record.device_id : null;
-              const healthy_sectors = isSector && !isInfected ? record.device_id : null;
-              return {
-                ...record,
-                proximity_count: proximityCount,
-                hour,
-                session_half,
-                meetings_held,
-                infected_cadets,
-                infected_sectors,
-                healthy_cadets,
-                healthy_sectors
-              };
-            });
-          if (isMounted) setEspData(normalizedData);
+        // Sort by ESP San Diego time
+        transformedData.sort((a, b) => (a.localTime - b.localTime));
+        // Deduplicate: remove consecutive records for the same device_id with identical fields (except timestamp)
+        const dedupedData = [];
+        const lastByDevice = {};
+        for (const rec of transformedData) {
+          const dev = rec.device_id;
+          const prev = lastByDevice[dev];
+          // Compare all fields except timestamp
+          const recClone = { ...rec };
+          delete recClone.timestamp;
+          delete recClone.localTime;
+          if (!prev || JSON.stringify(prev) !== JSON.stringify(recClone)) {
+            dedupedData.push(rec);
+            lastByDevice[dev] = { ...recClone };
+          }
         }
-        // If no new data, do not update espData
+        // Downsample: if a device has >200 records, keep only every Nth record
+        const grouped = {};
+        for (const rec of dedupedData) {
+          if (!grouped[rec.device_id]) grouped[rec.device_id] = [];
+          grouped[rec.device_id].push(rec);
+        }
+        let downsampledData = [];
+        for (const dev in grouped) {
+          const arr = grouped[dev];
+          if (arr.length > 200) {
+            const N = Math.ceil(arr.length / 200);
+            for (let i = 0; i < arr.length; i += N) {
+              downsampledData.push(arr[i]);
+            }
+          } else {
+            downsampledData = downsampledData.concat(arr);
+          }
+        }
+        // Sort by ESP San Diego time again after dedup/downsample
+        downsampledData.sort((a, b) => (a.localTime - b.localTime));
+        // Add derived fields to each record, including meetings_held and session_half (based on ESP time)
+        const normalizedData = downsampledData.map(record => {
+          const hour = record.localTime.getHours();
+          const session_half = hour < 12 ? 'AM' : 'PM';
+          // Count meetings held (MEETINGEND events before or at this record's ESP time)
+          const meetings_held = meetingEnds.filter(log => log.localTime <= record.localTime).length;
+          // Infection status mapping (corrected logic)
+          const isCadet = playerNames.includes(record.device_id);
+          const isInfected = record.infection_status === 1;
+          const infected_cadets = isCadet && isInfected ? record.device_id : null;
+          const infected_sectors = !isCadet && isInfected ? record.device_id : null;
+          return {
+            ...record,
+            hour,
+            session_half,
+            meetings_held,
+            infected_cadets,
+            infected_sectors
+          };
+        });
+        if (isMounted) setEspData(normalizedData);
       } catch (err) {
         setError('Error normalizing ESP data: ' + err.message);
       }
@@ -274,7 +266,7 @@ export function useESPData(enableRealTime = false) {
         return [{
           id: 'ESP Data',
           data: espData.map(item => ({
-            x: xVariable === "timestamp" ? getSanDiegoTimeOnlyString(new Date(item.timestamp)) : item[xVariable],
+            x: xVariable === "timestamp" ? getLocalTimeOnlyString(new Date(item.timestamp)) : item[xVariable],
             y: item[yVariable] || 0
           }))
         }];

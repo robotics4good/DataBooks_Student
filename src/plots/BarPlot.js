@@ -1,7 +1,8 @@
 // plots/bar_plot.js - Game-controlled data access
+// All time handling uses local device time only
 import React from 'react';
 import { ResponsiveBar } from "@nivo/bar";
-import { getSanDiegoTimeOnlyString } from '../utils/timeUtils';
+import { getLocalTimeOnlyString } from '../utils/timeUtils';
 
 const BarPlot = ({ data = [] }) => {
   // Transform data for bar plot if provided
@@ -10,7 +11,7 @@ const BarPlot = ({ data = [] }) => {
     
     // Transform ESP data into bar chart format
     const formattedData = data.map(item => ({
-      x: getSanDiegoTimeOnlyString(new Date(item.timestamp)),
+      x: getLocalTimeOnlyString(new Date(item.timestamp)),
       y: item.interaction || 0
     }));
     

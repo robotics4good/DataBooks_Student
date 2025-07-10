@@ -2,7 +2,7 @@ import React, { useRef, useLayoutEffect, useState } from 'react';
 import { useJournal } from "../JournalContext";
 import { db, ref, set, get } from "../firebase";
 import { logAction } from "../services/userActionLogger";
-import { getSanDiegoIsoString } from '../utils/timeUtils';
+import { getLocalIsoString } from '../utils/timeUtils';
 
 // Journal questions configuration
 export const JOURNAL_QUESTIONS = [
@@ -200,7 +200,7 @@ export const JournalQuestions = ({ logAction: _logAction, styles = {}, id }) => 
       // Calculate the flat index offset for this round
       let offset = 0;
       for (let r = 0; r < round - 1; r++) offset += ROUND_QUESTIONS[r].length;
-      const timestamp = getSanDiegoIsoString();
+      const timestamp = getLocalIsoString();
       const sanitizedTimestamp = sanitizeForFirebaseKey(timestamp);
       const answers = {};
       for (let i = 0; i < ROUND_QUESTIONS[round-1].length; i++) {

@@ -5,11 +5,11 @@ import ScatterPlot from '../plots/ScatterPlot';
 import PiePlot from '../plots/PiePlot';
 import BarPlot from '../plots/BarPlot';
 import HistogramPlot from '../plots/HistogramPlot';
-import { getSanDiegoTime } from '../utils/timeUtils';
+import { getLocalTime } from '../utils/timeUtils';
 
 const RushHourRebels = () => {
   // Generate unique session ID for this game instance
-  const sessionId = `rush_hour_rebels_${getSanDiegoTime().toMillis()}_${Math.random().toString(36).substr(2, 9)}`;
+  const sessionId = `rush_hour_rebels_${getLocalTime().getTime()}_${Math.random().toString(36).substr(2, 9)}`;
   
   // Game state
   const [gameState, setGameState] = useState('waiting');
