@@ -53,7 +53,6 @@ export function useESPData(enableRealTime = false) {
       const espDataRef = ref(db, 'readings');
       const snapshot = await get(espDataRef);
       const data = snapshot.val();
-      console.debug('[ESPData] Raw readings node from Firebase:', data); // DEBUG LOG
       if (data) {
         // Transform ESP data: always use ESP timestamp as anchor (local time)
         const transformedData = Object.keys(data).map(key => {
@@ -120,15 +119,6 @@ export function useESPData(enableRealTime = false) {
             infected_sectors
           };
         });
-        console.log('[useESPData] Sample meetingEnds:', meetingEnds.slice(0, 5));
-        console.log('[useESPData] Sample ESP packets:', downsampledData.slice(0, 5).map(r => ({
-          id: r.id,
-          device_id: r.device_id,
-          timestamp: r.timestamp,
-          localTime: r.localTime,
-          meetings_held: r.meetings_held
-        })));
-        console.log('[useESPData] Sample normalizedData:', normalizedData.slice(0, 10));
         setEspData(normalizedData);
       } // else: no data, do not update
     } catch (err) {
@@ -152,7 +142,6 @@ export function useESPData(enableRealTime = false) {
     // Helper to process and update ESP data
     const processESPData = (data) => {
       try {
-        console.debug('[ESPData] processESPData received:', data); // DEBUG LOG
         if (!data) {
           if (isMounted) setEspData([]);
           return;
@@ -424,4 +413,53 @@ export function useESPData(enableRealTime = false) {
     uniqueStudents,
     timeRange
   };
+} 
+
+// Utility to robustly parse MeetingLogs keys to Date
+function parseMeetingLogKey(key) {
+  // Example: 2025-07-10T07_57_45_000-07_00
+  // Want:    2025-07-10T07:57:45.000-07:00
+  const match = key.match(/^(.+T)(\d{2})_(\d{2})_(\d{2})_(\d{3})-(\d{2})_(\d{2})$/);
+  if (match) {
+    // match[1]=dateT, [2]=hh, [3]=mm, [4]=ss, [5]=ms, [6]=tz1, [7]=tz2
+    const iso = `${match[1]}${match[2]}:${match[3]}:${match[4]}.${match[5]}-${match[6]}:${match[7]}`;
+    const dateObj = new Date(iso);
+    console.log('[parseMeetingLogKey] key:', key, '| iso:', iso, '| date:', dateObj);
+    return dateObj;
+  }
+  // Fallback: replace all underscores with colons except the third (which becomes a period)
+  let out = key;
+  let count = 0;
+  out = out.replace(/_/g, () => {
+    count++;
+    if (count === 3) return '.';
+    return ':';
+  });
+  // Fix timezone
+  out = out.replace(/-(\d{2}):(\d{2})$/, (m, h, m2) => `-${h}:${m2}`);
+  const dateObj = new Date(out);
+  console.log('[parseMeetingLogKey] key:', key, '| fallback out:', out, '| date:', dateObj);
+  return dateObj;
+}
+
+export async function fetchMeetingLogTimestamps(sessionId) {
+  try {
+    const meetingLogsRef = ref(db, `sessions/${sessionId}/MeetingLogs`);
+    const snapshot = await get(meetingLogsRef);
+    const logs = snapshot.val();
+    if (!logs) return [];
+    // Only keep MEETINGEND events
+    const filteredKeys = Object.keys(logs).filter(key => logs[key]?.event === 'MEETINGEND');
+    console.log('[fetchMeetingLogTimestamps] Raw keys (MEETINGEND only):', filteredKeys);
+    const parsed = filteredKeys.map(parseMeetingLogKey);
+    console.log('[fetchMeetingLogTimestamps] Parsed timestamps:', parsed);
+    if (parsed.length > 1) {
+      const first = parsed[0];
+      const elapsed = parsed.map((t, i) => ({ x: i + 1, y: Math.round((t - first) / 60000) }));
+      console.log('[fetchMeetingLogTimestamps] Elapsed minutes for each meeting:', elapsed);
+    }
+    return parsed.filter(d => d instanceof Date && !isNaN(d)).sort((a, b) => a - b);
+  } catch (err) {
+    return [];
+  }
 } 

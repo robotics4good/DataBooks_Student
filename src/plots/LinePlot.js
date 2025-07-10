@@ -3,8 +3,8 @@
 import React from 'react';
 import { ResponsiveLine } from "@nivo/line";
 import { getLocalTimeOnlyString } from '../utils/timeUtils';
-
-console.log('[LinePlot] (top-level) LinePlot component file loaded');
+import { fetchMeetingLogTimestamps } from '../hooks/useESPData';
+import { getDatabase, ref, get } from 'firebase/database';
 
 const variableMap = {
   'Time': item => getLocalTimeOnlyString(new Date(item.timestamp)),
@@ -16,32 +16,46 @@ const variableMap = {
 };
 
 const LinePlot = (props) => {
-  console.log('[LinePlot] Component rendered with props:', props);
-  const { data = [], xVar = 'Time', yVar = 'Infected Cadets' } = props;
-  console.log('[LinePlot] RAW DATA:', data);
-  console.log('[LinePlot] xVar:', xVar, 'yVar:', yVar);
+  console.log('[LinePlot] props:', props);
+  const { data = [], xVar = 'Time', yVar = 'Infected Cadets', sessionId } = props;
+  const [meetingPoints, setMeetingPoints] = React.useState(null);
   // Special case: Time vs Meetings Held with dynamic binning
   const isTimeVsMeetings = xVar === 'Time' && yVar === 'Meetings Held';
-  // DEBUG: Log all props and flags
-  console.log('[LinePlot] data:', data);
-  console.log('[LinePlot] xVar:', xVar, 'yVar:', yVar, 'isTimeVsMeetings:', isTimeVsMeetings);
+
+  React.useEffect(() => {
+    if (xVar === 'Meetings Held' && yVar === 'Time' && sessionId) {
+      console.log('[LinePlot] Fetching MeetingLogs for sessionId:', sessionId);
+      fetchMeetingLogTimestamps(sessionId).then(timestamps => {
+        if (!timestamps.length) {
+          setMeetingPoints([]);
+          return;
+        }
+        const first = timestamps[0];
+        const points = timestamps.map((t, i) => ({
+          x: i + 1,
+          y: (t - first) / 60000 // true minutes elapsed since first meeting, can be decimal
+        }));
+        setMeetingPoints(points);
+      });
+    } else {
+      setMeetingPoints(null);
+    }
+  }, [xVar, yVar, sessionId]);
+
   const getLineData = () => {
     if (!data || !data.length) {
-      console.warn('[LinePlot] No data array or empty data array');
       return [];
     }
     if (isTimeVsMeetings) {
       // Get first ESP packet time and now (local time at plot render)
       const firstTime = new Date(data[0].timestamp);
       const now = new Date(); // Use current local time as upper bound
-      console.log('[LinePlot] firstTime:', firstTime, 'now:', now);
       const numBins = 10;
       const binSizeMs = (now - firstTime) / numBins;
       // Get all unique meeting counts and their times
       const meetingTimes = data
         .filter(item => {
           if (typeof item.meetings_held !== 'number' || !isFinite(item.meetings_held)) {
-            console.warn('[LinePlot] Missing or non-numeric meetings_held in item:', item);
             return false;
           }
           return true;
@@ -50,14 +64,12 @@ const LinePlot = (props) => {
           time: new Date(item.timestamp),
           count: Number.isFinite(item.meetings_held) ? item.meetings_held : 0
         }));
-      console.log('[LinePlot] meetingTimes:', meetingTimes);
       // Generate bins from firstTime to now
       const bins = [];
       for (let i = 0; i <= numBins; i++) {
         const binTime = new Date(firstTime.getTime() + i * binSizeMs);
         bins.push(binTime);
       }
-      console.log('[LinePlot] bins:', bins.map(t => t.toISOString()));
       // For each bin, find the max meetings_held up to that time
       let lastCount = 0;
       let binData = bins.map(binTime => {
@@ -71,9 +83,11 @@ const LinePlot = (props) => {
       });
       // Filter out any points with non-numeric or NaN y (but keep zeros)
       binData = binData.filter(pt => typeof pt.y === 'number' && !isNaN(pt.y));
-      console.log('[LinePlot] binData:', binData);
-      console.log('[LinePlot] FINAL BIN DATA:', binData);
       return [{ id: 'Meetings Held', data: binData }];
+    }
+    if (xVar === 'Meetings Held' && yVar === 'Time' && meetingPoints) {
+      // Use meetingPoints as (x: meeting number, y: minutes since first meeting)
+      return [{ id: 'Elapsed Minutes', data: meetingPoints }];
     }
     // Default: use variableMap
     const xAccessor = variableMap[xVar] || (item => item[xVar]);
@@ -86,7 +100,6 @@ const LinePlot = (props) => {
         y: yVal
       };
     }).filter(pt => typeof pt.y === 'number' && !isNaN(pt.y));
-    console.log('[LinePlot] Default transformedData:', transformedData.map(pt => pt.y));
     return [{
       id: 'ESP Data',
       data: transformedData
@@ -124,14 +137,17 @@ const LinePlot = (props) => {
   
   return (
     <div style={{ height: "100%", width: "100%", maxHeight: 400 }}>
+      <div style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: 8 }}>
+        {`Line plot of ${xVar} vs ${yVar}`}
+      </div>
       <ResponsiveLine
         data={lineData}
-        margin={{ top: 60, right: 90, bottom: 90, left: 90 }}
-        xScale={{ type: "point" }}
+        margin={{ top: 60, right: 90, bottom: 110, left: 90 }}
+        xScale={{ type: 'point' }}
         yScale={{ 
           type: "linear", 
-          min: Math.max(0, minY - (maxY - minY) * 0.1), 
-          max: maxY + (maxY - minY) * 0.1 
+          min: xVar === 'Meetings Held' && yVar === 'Time' ? 0 : Math.max(0, minY - (maxY - minY) * 0.1), 
+          max: xVar === 'Meetings Held' && yVar === 'Time' ? 'auto' : maxY + (maxY - minY) * 0.1 
         }}
         axisBottom={{
           legend: xVar,
@@ -140,9 +156,24 @@ const LinePlot = (props) => {
           tickRotation: -45,
         }}
         axisLeft={{ 
-          legend: yVar, 
+          legend: xVar === 'Meetings Held' && yVar === 'Time' ? 'Elapsed Minutes' : yVar, 
           legendOffset: -60, 
-          legendPosition: "middle" 
+          legendPosition: "middle",
+          tickValues: xVar === 'Meetings Held' && yVar === 'Time' && lineData[0]?.data?.length > 0 ? (() => {
+            const ys = lineData[0].data.map(pt => Math.round(pt.y));
+            const minY = Math.min(...ys);
+            const maxY = Math.max(...ys);
+            const numTicks = Math.min(8, maxY - minY + 1);
+            if (numTicks <= 1) return [minY];
+            const step = Math.max(1, Math.round((maxY - minY) / (numTicks - 1)));
+            const ticks = [];
+            for (let v = minY; v <= maxY; v += step) {
+              ticks.push(v);
+            }
+            if (ticks[ticks.length - 1] !== maxY) ticks.push(maxY);
+            return ticks;
+          })() : undefined,
+          tickFormat: xVar === 'Meetings Held' && yVar === 'Time' ? v => Math.round(v) : undefined,
         }}
         colors={{ scheme: "category10" }}
         pointSize={8}
@@ -196,6 +227,11 @@ const LinePlot = (props) => {
                 symbolShape: 'circle'
             }
         ]}
+        tooltip={({ point }) => (
+          <div style={{ background: 'white', padding: 8, border: '1px solid #ccc', borderRadius: 4 }}>
+            <strong>x: {point.data.x}, y: {xVar === 'Meetings Held' && yVar === 'Time' ? point.data.y.toFixed(2) : Math.round(point.data.y)}</strong>
+          </div>
+        )}
       />
     </div>
   );

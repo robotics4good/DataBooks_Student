@@ -36,7 +36,6 @@ export const UserLogProvider = ({ children }) => {
   // Data sync service is OFF by default - user must manually enable
   useEffect(() => {
     // Don't start sync automatically - let user control it
-    console.log('UserLog ready - streaming is OFF by default');
     
     // Cleanup on unmount
     return () => {};
@@ -74,7 +73,6 @@ export const UserLogProvider = ({ children }) => {
     const sanitizedTimestamp = timestamp.replace(/[^a-zA-Z0-9_-]/g, '_');
     const logPath = `sessions/${sessionId}/UserLogs/${userId}/${sanitizedTimestamp}`;
     await set(ref(db, logPath), action);
-    console.log("🔥 Logged locally & sent to Firebase:", action);
   };
 
   const startLogging = () => setLoggingEnabled(true);
