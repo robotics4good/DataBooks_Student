@@ -1,6 +1,8 @@
 import React from 'react';
 import { ResponsiveScatterPlot } from "@nivo/scatterplot";
 import { getLocalTimeOnlyString } from '../utils/timeUtils';
+import { playerNames } from './plotConfigs';
+const sectorIds = ["T1","T2","T3","T4","T5","T6"];
 
 const variableMap = {
   'Time': item => getLocalTimeOnlyString(new Date(item.timestamp)),
@@ -11,15 +13,29 @@ const variableMap = {
   'Healthy Cadets': item => item.healthy_cadets,
 };
 
-const ScatterPlot = ({ data = [], xVar = 'Time', yVar = 'Infected Cadets' }) => {
+const ScatterPlot = ({ data = [], xVar = 'Time', yVar = 'Infected Cadets', personFilter, sectorFilter }) => {
+  // FILTER: Only include devices that are selected in the filter
+  let filterSet = null;
+  const cadetVars = ['Infected Cadets', 'Healthy Cadets'];
+  const sectorVars = ['Infected Sectors', 'Healthy Sectors'];
+  if (cadetVars.includes(xVar) || cadetVars.includes(yVar)) {
+    filterSet = new Set((personFilter && Object.entries(personFilter).filter(([id, sel]) => sel).map(([id]) => id)) || []);
+  } else if (sectorVars.includes(xVar) || sectorVars.includes(yVar)) {
+    filterSet = new Set((sectorFilter && Object.entries(sectorFilter).filter(([id, sel]) => sel).map(([id]) => id)) || []);
+  }
+  const filteredData = filterSet ? data.filter(d => filterSet.has(d.device_id)) : data;
+
   const getScatterData = () => {
-    if (!data || !data.length) return [];
+    if (!filteredData || !filteredData.length) return [];
     const xAccessor = variableMap[xVar] || (item => item[xVar]);
     const yAccessor = variableMap[yVar] || (item => item[yVar]);
-    return data.map(item => ({
-      x: xAccessor(item),
-      y: yAccessor(item)
-    }));
+    return [{
+      id: 'ESP Data',
+      data: filteredData.map(item => ({
+        x: xAccessor(item),
+        y: yAccessor(item)
+      }))
+    }];
   };
 
   const scatterData = getScatterData();
@@ -44,7 +60,21 @@ const ScatterPlot = ({ data = [], xVar = 'Time', yVar = 'Infected Cadets' }) => 
   // Calculate dynamic scales based on actual data
   const allXValues = scatterData.flatMap(series => series.data.map(point => point.x)).filter(x => typeof x === 'number');
   const allYValues = scatterData.flatMap(series => series.data.map(point => point.y)).filter(y => typeof y === 'number');
-  
+
+  // For cadet/sector variables, set axis max to number of unique IDs in filtered data
+  let xMaxOverride = null;
+  let yMaxOverride = null;
+  if (cadetVars.includes(xVar)) {
+    xMaxOverride = Array.from(new Set(filteredData.map(d => d.device_id).filter(id => playerNames.includes(id)))).length;
+  } else if (sectorVars.includes(xVar)) {
+    xMaxOverride = Array.from(new Set(filteredData.map(d => d.device_id).filter(id => sectorIds.includes(id)))).length;
+  }
+  if (cadetVars.includes(yVar)) {
+    yMaxOverride = Array.from(new Set(filteredData.map(d => d.device_id).filter(id => playerNames.includes(id)))).length;
+  } else if (sectorVars.includes(yVar)) {
+    yMaxOverride = Array.from(new Set(filteredData.map(d => d.device_id).filter(id => sectorIds.includes(id)))).length;
+  }
+
   const maxX = allXValues.length > 0 ? Math.max(...allXValues) : 100;
   const minX = allXValues.length > 0 ? Math.min(...allXValues) : 0;
   const maxY = allYValues.length > 0 ? Math.max(...allYValues) : 100;
@@ -58,20 +88,20 @@ const ScatterPlot = ({ data = [], xVar = 'Time', yVar = 'Infected Cadets' }) => 
         xScale={{ 
           type: "linear", 
           min: Math.max(0, minX - (maxX - minX) * 0.1), 
-          max: maxX + (maxX - minX) * 0.1 
+          max: xMaxOverride !== null ? xMaxOverride : maxX + (maxX - minX) * 0.1 
         }}
         yScale={{ 
           type: "linear", 
           min: Math.max(0, minY - (maxY - minY) * 0.1), 
-          max: maxY + (maxY - minY) * 0.1 
+          max: yMaxOverride !== null ? yMaxOverride : maxY + (maxY - minY) * 0.1 
         }}
         axisBottom={{
-          legend: "Interaction Value",
+          legend: xVar,
           legendOffset: 56,
           legendPosition: "middle",
         }}
         axisLeft={{ 
-          legend: "Engagement Value", 
+          legend: yVar, 
           legendOffset: -60, 
           legendPosition: "middle" 
         }}

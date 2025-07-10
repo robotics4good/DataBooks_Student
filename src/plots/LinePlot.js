@@ -5,6 +5,8 @@ import { ResponsiveLine } from "@nivo/line";
 import { getLocalTimeOnlyString } from '../utils/timeUtils';
 import { fetchMeetingLogTimestamps } from '../hooks/useESPData';
 import { getDatabase, ref, get } from 'firebase/database';
+import { playerNames } from './plotConfigs';
+const sectorIds = ["T1","T2","T3","T4","T5","T6"];
 
 const variableMap = {
   'Time': item => getLocalTimeOnlyString(new Date(item.timestamp)),
@@ -107,7 +109,14 @@ const LinePlot = (props) => {
       }
       // For each bin, count the number of Y variable present at that time
       // For each device, find the latest record up to that bin
-      const deviceIds = Array.from(new Set(data.map(d => d.device_id)));
+      // FILTER: Only include devices that are selected in the filter
+      let filterSet = null;
+      if (yVar === 'Infected Cadets' || yVar === 'Healthy Cadets') {
+        filterSet = new Set((props.personFilter && Object.entries(props.personFilter).filter(([id, sel]) => sel).map(([id]) => id)) || []);
+      } else if (yVar === 'Infected Sectors' || yVar === 'Healthy Sectors') {
+        filterSet = new Set((props.sectorFilter && Object.entries(props.sectorFilter).filter(([id, sel]) => sel).map(([id]) => id)) || []);
+      }
+      const deviceIds = Array.from(new Set(data.map(d => d.device_id))).filter(id => !filterSet || filterSet.has(id));
       const series = [{ id: yVar, data: [] }];
       for (let i = 0; i < bins.length; i++) {
         const binEnd = bins[i];
@@ -164,6 +173,13 @@ const LinePlot = (props) => {
   const allValues = lineData.flatMap(series => series.data.map(point => point.y)).filter(y => typeof y === 'number');
   const maxY = allValues.length > 0 ? Math.max(...allValues) : 100;
   const minY = allValues.length > 0 ? Math.min(...allValues) : 0;
+  // For time-binned plots, set yMax to number of unique IDs in filtered data
+  let yMaxOverride = null;
+  if (xVar === 'Time' && ['Infected Cadets', 'Healthy Cadets'].includes(yVar)) {
+    yMaxOverride = Array.from(new Set(data.map(d => d.device_id).filter(id => playerNames.includes(id)))).length;
+  } else if (xVar === 'Time' && ['Infected Sectors', 'Healthy Sectors'].includes(yVar)) {
+    yMaxOverride = Array.from(new Set(data.map(d => d.device_id).filter(id => sectorIds.includes(id)))).length;
+  }
   
   return (
     <div style={{ height: "100%", width: "100%", maxHeight: 400 }}>
@@ -177,7 +193,7 @@ const LinePlot = (props) => {
         yScale={{ 
           type: "linear", 
           min: xVar === 'Meetings Held' && yVar === 'Time' ? 0 : Math.max(0, minY - (maxY - minY) * 0.1), 
-          max: xVar === 'Meetings Held' && yVar === 'Time' ? 'auto' : maxY + (maxY - minY) * 0.1 
+          max: yMaxOverride !== null ? yMaxOverride : (xVar === 'Meetings Held' && yVar === 'Time' ? 'auto' : maxY + (maxY - minY) * 0.1)
         }}
         axisBottom={{
           legend: xVar,

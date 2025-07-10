@@ -142,7 +142,9 @@ const PlotComponent = ({ plotLabel, theme, data, logAction, rawData, allInfected
           plotType === 'pie' ? (
             <PlotRenderer theme={theme} logAction={logAction} />
           ) : plotType === 'line' ? (
-            <PlotRenderer data={data} xVar={xVars[0]} yVar={yVars[0]} theme={theme} />
+            <PlotRenderer data={data} xVar={xVars[0]} yVar={yVars[0]} theme={theme} personFilter={cadetFilter} sectorFilter={sectorFilter} />
+          ) : plotType === 'scatter' ? (
+            <PlotRenderer data={data} xVar={xVars[0]} yVar={yVars[0]} theme={theme} personFilter={cadetFilter} sectorFilter={sectorFilter} />
           ) : (
             <PlotRenderer data={filteredData} theme={theme} />
           )
