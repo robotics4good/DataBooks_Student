@@ -136,6 +136,26 @@ const PlotControls = ({
     }
   }, [showCadetFilter, filteredCadetIds.join(','), showSectorFilter, filteredSectorIds.join(',')]);
 
+  React.useEffect(() => {
+    // For X variables: uncheck any that are now disabled
+    effectiveVariables.forEach(v => {
+      const noValidY = !hasValidPair(allowedMatrix, v, true, effectiveVariables);
+      const disabled = (yVars.length > 0 && !isXAllowed(v, allowedMatrix)) || noValidY;
+      if (disabled && xVars.includes(v)) {
+        onXVariableToggle(v);
+      }
+    });
+    // For Y variables: uncheck any that are now disabled
+    effectiveVariables.forEach(v => {
+      const noValidX = !hasValidPair(allowedMatrix, v, false, effectiveVariables);
+      const disabled = (xVars.length > 0 && !isYAllowed(xVars[0], v, allowedMatrix)) || noValidX;
+      if (disabled && yVars.includes(v)) {
+        onYVariableToggle(v);
+      }
+    });
+  // Only run when relevant state changes
+  }, [effectiveVariables.join(','), xVars.join(','), yVars.join(','), allowedMatrix]);
+
   return (
     <div className={styles.controlsContainer}>
       <div className={styles.optionsArea}>

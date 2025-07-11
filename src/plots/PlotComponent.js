@@ -81,7 +81,14 @@ const PlotComponent = ({ plotLabel, theme, data, logAction, rawData, allInfected
   });
 
   // Professional, robust empty data check
-  const hasData = Array.isArray(filteredData) && filteredData.some(series => Array.isArray(series.data) && series.data.length > 0);
+  let hasData = false;
+  if (plotType === 'line') {
+    // For line plots, check if data is a non-empty array of objects with x and y
+    hasData = Array.isArray(data) && data.length > 0 && typeof data[0] === 'object' && 'x' in data[0] && 'y' in data[0];
+  } else {
+    // For other plots, use the existing logic
+    hasData = Array.isArray(filteredData) && filteredData.some(series => Array.isArray(series.data) && series.data.length > 0);
+  }
 
   // Decide which data to pass to PlotRenderer
   let plotDataToUse = data; // Always use raw ESP data for meeting log plots
@@ -90,111 +97,120 @@ const PlotComponent = ({ plotLabel, theme, data, logAction, rawData, allInfected
     <div className={styles.plotContainer}>
       {/* Always reserve space for the plot or the no-data message */}
       <div className={styles.plotRenderer}>
-        {meetingEnds && meetingEnds.length > 0 ? (
-          <PlotRenderer 
-            data={plotDataToUse} 
-            xVar={xVars[0]} 
-            yVar={yVars[0]} 
-            theme={theme} 
-            sessionId={sessionId} 
-            meetingEndsSanDiego={meetingEnds} 
-          />
-        ) : hasData ? (
-          plotType === 'pie' ? (
+        {/* Only use meetingEnds for the two production-locked plots */}
+        {xVars && yVars && xVars[0] && yVars[0] && xVars[0] !== yVars[0] ? (
+          plotType === 'line' && (
+            (xVars[0] === 'Meetings Held' && yVars[0] === 'Time') ||
+            (xVars[0] === 'Time' && yVars[0] === 'Meetings Held')
+          ) && meetingEnds && meetingEnds.length > 0 ? (
             <PlotRenderer 
-              data={data} 
-              selectedVariable={xVars[0]} 
+              data={plotDataToUse} 
+              xVar={xVars[0]} 
+              yVar={yVars[0]} 
               theme={theme} 
-              logAction={logAction} 
-              sessionId={sessionId}
-              personFilter={cadetFilter}
-              sectorFilter={sectorFilter}
-              rawData={rawData}
-              allInfectedCadets={allInfectedCadets}
-              allHealthyCadets={allHealthyCadets}
-              allInfectedSectors={allInfectedSectors}
-              allHealthySectors={allHealthySectors}
+              sessionId={sessionId} 
+              meetingEndsSanDiego={meetingEnds} 
             />
           ) : plotType === 'line' ? (
-            <PlotRenderer 
-              data={data} 
-              xVar={xVars[0]} 
-              yVar={yVars[0]} 
-              theme={theme} 
-              personFilter={cadetFilter} 
-              sectorFilter={sectorFilter}
-              sessionId={sessionId}
-              meetingEndsSanDiego={meetingEnds}
-              rawData={rawData}
-              allInfectedCadets={allInfectedCadets}
-              allHealthyCadets={allHealthyCadets}
-              allInfectedSectors={allInfectedSectors}
-              allHealthySectors={allHealthySectors}
-            />
-          ) : plotType === 'scatter' ? (
-            <PlotRenderer 
-              data={data} 
-              xVar={xVars[0]} 
-              yVar={yVars[0]} 
-              theme={theme} 
-              personFilter={cadetFilter} 
-              sectorFilter={sectorFilter}
-              sessionId={sessionId}
-              meetingEndsSanDiego={meetingEnds}
-              rawData={rawData}
-              allInfectedCadets={allInfectedCadets}
-              allHealthyCadets={allHealthyCadets}
-              allInfectedSectors={allInfectedSectors}
-              allHealthySectors={allHealthySectors}
-            />
-          ) : plotType === 'histogram' ? (
-            <PlotRenderer 
-              data={data} 
-              xVar={xVars[0]} 
-              theme={theme}
-              sessionId={sessionId}
-              personFilter={cadetFilter}
-              sectorFilter={sectorFilter}
-              rawData={rawData}
-              allInfectedCadets={allInfectedCadets}
-              allHealthyCadets={allHealthyCadets}
-              allInfectedSectors={allInfectedSectors}
-              allHealthySectors={allHealthySectors}
-            />
+            <>
+              {console.log('[PlotComponent] Rendering LinePlot', { plotType, xVars, yVars, data })}
+              <PlotRenderer 
+                data={data} 
+                xVar={xVars[0]} 
+                yVar={yVars[0]} 
+                theme={theme} 
+                personFilter={cadetFilter} 
+                sectorFilter={sectorFilter}
+                sessionId={sessionId}
+                meetingEndsSanDiego={meetingEnds}
+                rawData={rawData}
+                allInfectedCadets={allInfectedCadets}
+                allHealthyCadets={allHealthyCadets}
+                allInfectedSectors={allInfectedSectors}
+                allHealthySectors={allHealthySectors}
+              />
+            </>
+          ) : hasData ? (
+            plotType === 'pie' ? (
+              <PlotRenderer 
+                data={data} 
+                selectedVariable={xVars[0]} 
+                theme={theme} 
+                logAction={logAction} 
+                sessionId={sessionId}
+                personFilter={cadetFilter}
+                sectorFilter={sectorFilter}
+                rawData={rawData}
+                allInfectedCadets={allInfectedCadets}
+                allHealthyCadets={allHealthyCadets}
+                allInfectedSectors={allInfectedSectors}
+                allHealthySectors={allHealthySectors}
+              />
+            ) : plotType === 'scatter' ? (
+              <PlotRenderer 
+                data={data} 
+                xVar={xVars[0]} 
+                yVar={yVars[0]} 
+                theme={theme} 
+                personFilter={cadetFilter} 
+                sectorFilter={sectorFilter}
+                sessionId={sessionId}
+                meetingEndsSanDiego={meetingEnds}
+                rawData={rawData}
+                allInfectedCadets={allInfectedCadets}
+                allHealthyCadets={allHealthyCadets}
+                allInfectedSectors={allInfectedSectors}
+                allHealthySectors={allHealthySectors}
+              />
+            ) : plotType === 'histogram' ? (
+              <PlotRenderer 
+                data={data} 
+                xVar={xVars[0]} 
+                theme={theme}
+                sessionId={sessionId}
+                personFilter={cadetFilter}
+                sectorFilter={sectorFilter}
+                rawData={rawData}
+                allInfectedCadets={allInfectedCadets}
+                allHealthyCadets={allHealthyCadets}
+                allInfectedSectors={allInfectedSectors}
+                allHealthySectors={allHealthySectors}
+              />
+            ) : (
+              <PlotRenderer 
+                data={filteredData} 
+                xVar={xVars[0]}
+                yVar={yVars[0]}
+                theme={theme}
+                sessionId={sessionId}
+                personFilter={cadetFilter}
+                sectorFilter={sectorFilter}
+                rawData={rawData}
+                allInfectedCadets={allInfectedCadets}
+                allHealthyCadets={allHealthyCadets}
+                allInfectedSectors={allInfectedSectors}
+                allHealthySectors={allHealthySectors}
+              />
+            )
           ) : (
-            <PlotRenderer 
-              data={filteredData} 
-              xVar={xVars[0]}
-              yVar={yVars[0]}
-              theme={theme}
-              sessionId={sessionId}
-              personFilter={cadetFilter}
-              sectorFilter={sectorFilter}
-              rawData={rawData}
-              allInfectedCadets={allInfectedCadets}
-              allHealthyCadets={allHealthyCadets}
-              allInfectedSectors={allInfectedSectors}
-              allHealthySectors={allHealthySectors}
-            />
+            <div style={{
+              height: '100%',
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center',
+              fontSize: '1.1rem',
+              color: '#666',
+              background: '#f8f3ea',
+              borderRadius: 8,
+              border: '1.5px solid #e0e0e0',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.07)'
+            }}>
+              No data to display currently
+            </div>
           )
-        ) : (
-          <div style={{
-            height: '100%',
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            textAlign: 'center',
-            fontSize: '1.1rem',
-            color: '#666',
-            background: '#f8f3ea',
-            borderRadius: 8,
-            border: '1.5px solid #e0e0e0',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.07)'
-          }}>
-            No data to display currently
-          </div>
-        )}
+        ) : null}
       </div>
       
       {/* Plot controls always below */}

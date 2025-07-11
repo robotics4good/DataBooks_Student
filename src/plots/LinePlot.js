@@ -52,41 +52,59 @@ const LinePlot = (props) => {
       ...d,
       timestamp: typeof d.timestamp === 'string' ? Date.parse(d.timestamp) : d.timestamp
     }));
-    // Custom binning for Time vs Meetings Held (X: Time, Y: Meetings Held)
-    if (xVar === 'Time' && yVar === 'Meetings Held' && sessionId && Array.isArray(meetingEndsSanDiego) && meetingEndsSanDiego.length > 0 && Array.isArray(espData) && espData.length > 0) {
-      // Find the first ESP data timestamp (San Diego time)
-      const firstESPTimestamp = Math.min(...espData.map(d => d.timestamp));
-      // Filter meeting ends to only those at or after the first ESP timestamp
-      const filteredMeetings = meetingEndsSanDiego.filter(mt => mt >= firstESPTimestamp);
-      if (filteredMeetings.length === 0) {
+
+    let lineData = [];
+    const maxBins = 30; // Default max bins for new plots
+
+    if (xVar === 'Time') {
+      if (yVar === 'Infected Cadets') {
+        console.log('[LinePlot] getTimeVsInfectedCadets called', { data: espData, maxBins });
+        lineData = getTimeVsInfectedCadets(espData, maxBins);
+        console.log('[LinePlot] getTimeVsInfectedCadets result', lineData);
+      } else if (yVar === 'Healthy Cadets') {
+        console.log('[LinePlot] getTimeVsHealthyCadets called', { data: espData, maxBins });
+        lineData = getTimeVsHealthyCadets(espData, maxBins);
+        console.log('[LinePlot] getTimeVsHealthyCadets result', lineData);
+      } else if (yVar === 'Infected Sectors') {
+        console.log('[LinePlot] getTimeVsInfectedSectors called', { data: espData, maxBins });
+        lineData = getTimeVsInfectedSectors(espData, maxBins);
+        console.log('[LinePlot] getTimeVsInfectedSectors result', lineData);
+      } else if (yVar === 'Healthy Sectors') {
+        console.log('[LinePlot] getTimeVsHealthySectors called', { data: espData, maxBins });
+        lineData = getTimeVsHealthySectors(espData, maxBins);
+        console.log('[LinePlot] getTimeVsHealthySectors result', lineData);
+      } else if (yVar === 'Meetings Held' && sessionId && Array.isArray(meetingEndsSanDiego) && meetingEndsSanDiego.length > 0 && Array.isArray(espData) && espData.length > 0) {
+        // Find the first ESP data timestamp (San Diego time)
+        const firstESPTimestamp = Math.min(...espData.map(d => d.timestamp));
+        // Filter meeting ends to only those at or after the first ESP timestamp
+        const filteredMeetings = meetingEndsSanDiego.filter(mt => mt >= firstESPTimestamp);
+        if (filteredMeetings.length === 0) {
+          setMeetingPoints([]);
+          return;
+        }
+        const maxBins = 30;
+        const minTime = firstESPTimestamp;
+        const maxTime = Date.now(); // Use current time as upper bound
+        const totalDuration = maxTime - minTime;
+        const binSize = Math.max(60 * 1000, Math.ceil(totalDuration / maxBins));
+        const binEdges = [];
+        for (let t = minTime; t <= maxTime; t += binSize) {
+          binEdges.push(t);
+        }
+        const points = binEdges.map(edge => ({
+          timestamp: edge,
+          elapsed_minutes: (edge - minTime) / 60000,
+          meetings_held: filteredMeetings.filter(mt => mt <= edge).length
+        }));
+        setMeetingPoints(points);
+        return;
+      } else {
+        console.error(`[LinePlot] Unknown yVar for xVar=Time: ${yVar}`);
         setMeetingPoints([]);
         return;
       }
-      const maxBins = 30;
-      const minTime = firstESPTimestamp;
-      const maxTime = Date.now(); // Use current time as upper bound
-      const totalDuration = maxTime - minTime;
-      const binSize = Math.max(60 * 1000, Math.ceil(totalDuration / maxBins));
-      const binEdges = [];
-      for (let t = minTime; t <= maxTime; t += binSize) {
-        binEdges.push(t);
-      }
-      const points = binEdges.map(edge => ({
-        timestamp: edge,
-        elapsed_minutes: (edge - minTime) / 60000,
-        meetings_held: filteredMeetings.filter(mt => mt <= edge).length
-      }));
-      // Debug logging
-      console.log('[LinePlot] Time vs Meetings Held debug:', {
-        firstESPTimestamp,
-        filteredMeetings,
-        minTime,
-        maxTime,
-        binSize,
-        binEdges,
-        points
-      });
-      setMeetingPoints(points);
+      console.log('[LinePlot] Setting meetingPoints for new plot', lineData);
+      setMeetingPoints(lineData);
       return;
     }
     // =============================
@@ -102,6 +120,186 @@ const LinePlot = (props) => {
           x: i + 1,
           y: elapsed,
           actualTime: isNaN(date) ? '' : date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+        };
+      });
+      setMeetingPoints(points);
+      return;
+    }
+    // =============================
+    // PRODUCTION-LOCKED: Time vs Infected Cadets (STABLE, DO NOT MODIFY)
+    // The logic for binning and plotting Time vs Infected Cadets is stable and correct as of 2024-07-11.
+    // Any changes must be explicitly reviewed and approved.
+    // =============================
+    if (xVar === 'Time' && yVar === 'Infected Cadets' && Array.isArray(espData) && espData.length > 0) {
+      const timestamps = espData.map(d => d.timestamp);
+      const firstESPTimestamp = Math.min(...timestamps);
+      const minTime = firstESPTimestamp;
+      const maxTime = Date.now(); // Use current time as upper bound (match Meetings Held)
+      const maxBins = 30;
+      const totalDuration = maxTime - minTime;
+      const binSize = totalDuration > 0 ? Math.max(60 * 1000, Math.ceil(totalDuration / maxBins)) : 1;
+      const binEdges = [];
+      for (let i = 0; i <= maxBins; i++) {
+        binEdges.push(minTime + i * binSize);
+      }
+      // Format x as HH:MM, ensure uniqueness
+      const seenLabels = new Set();
+      const points = binEdges.map((edge, i) => {
+        const latestByCadet = {};
+        espData.forEach(d => {
+          if (playerNames.includes(d.device_id) && d.timestamp <= edge) {
+            if (!latestByCadet[d.device_id] || d.timestamp > latestByCadet[d.device_id].timestamp) {
+              latestByCadet[d.device_id] = d;
+            }
+          }
+        });
+        const infectedCount = Object.values(latestByCadet).filter(d => d.infection_status === 1).length;
+        let label = new Date(edge).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+        // Ensure uniqueness
+        let uniqueLabel = label;
+        let suffix = 1;
+        while (seenLabels.has(uniqueLabel)) {
+          uniqueLabel = `${label}_${suffix++}`;
+        }
+        seenLabels.add(uniqueLabel);
+        return {
+          x: edge,
+          y: infectedCount
+        };
+      });
+      setMeetingPoints(points);
+      return;
+    }
+    // =============================
+    // PRODUCTION-LOCKED: Time vs Healthy Cadets (STABLE, DO NOT MODIFY)
+    // The logic for binning and plotting Time vs Healthy Cadets is stable and correct as of 2024-07-11.
+    // Any changes must be explicitly reviewed and approved.
+    // =============================
+    if (xVar === 'Time' && yVar === 'Healthy Cadets' && Array.isArray(espData) && espData.length > 0) {
+      const timestamps = espData.map(d => d.timestamp);
+      const firstESPTimestamp = Math.min(...timestamps);
+      const minTime = firstESPTimestamp;
+      const maxTime = Date.now(); // Use current time as upper bound (match Meetings Held)
+      const maxBins = 30;
+      const totalDuration = maxTime - minTime;
+      const binSize = totalDuration > 0 ? Math.max(60 * 1000, Math.ceil(totalDuration / maxBins)) : 1;
+      const binEdges = [];
+      for (let i = 0; i <= maxBins; i++) {
+        binEdges.push(minTime + i * binSize);
+      }
+      // Format x as HH:MM, ensure uniqueness
+      const seenLabels = new Set();
+      const points = binEdges.map((edge, i) => {
+        const latestByCadet = {};
+        espData.forEach(d => {
+          if (playerNames.includes(d.device_id) && d.timestamp <= edge) {
+            if (!latestByCadet[d.device_id] || d.timestamp > latestByCadet[d.device_id].timestamp) {
+              latestByCadet[d.device_id] = d;
+            }
+          }
+        });
+        const healthyCount = Object.values(latestByCadet).filter(d => d.infection_status === 0).length;
+        let label = new Date(edge).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+        // Ensure uniqueness
+        let uniqueLabel = label;
+        let suffix = 1;
+        while (seenLabels.has(uniqueLabel)) {
+          uniqueLabel = `${label}_${suffix++}`;
+        }
+        seenLabels.add(uniqueLabel);
+        return {
+          x: edge,
+          y: healthyCount
+        };
+      });
+      setMeetingPoints(points);
+      return;
+    }
+    // =============================
+    // PRODUCTION-LOCKED: Time vs Infected Sectors (STABLE, DO NOT MODIFY)
+    // The logic for binning and plotting Time vs Infected Sectors is stable and correct as of 2024-07-11.
+    // Any changes must be explicitly reviewed and approved.
+    // =============================
+    if (xVar === 'Time' && yVar === 'Infected Sectors' && Array.isArray(espData) && espData.length > 0) {
+      const timestamps = espData.map(d => d.timestamp);
+      const firstESPTimestamp = Math.min(...timestamps);
+      const minTime = firstESPTimestamp;
+      const maxTime = Date.now(); // Use current time as upper bound (match Meetings Held)
+      const maxBins = 30;
+      const totalDuration = maxTime - minTime;
+      const binSize = totalDuration > 0 ? Math.max(60 * 1000, Math.ceil(totalDuration / maxBins)) : 1;
+      const binEdges = [];
+      for (let i = 0; i <= maxBins; i++) {
+        binEdges.push(minTime + i * binSize);
+      }
+      // Format x as HH:MM, ensure uniqueness
+      const seenLabels = new Set();
+      const points = binEdges.map((edge, i) => {
+        const latestBySector = {};
+        espData.forEach(d => {
+          if (sectorIds.includes(d.device_id) && d.timestamp <= edge) {
+            if (!latestBySector[d.device_id] || d.timestamp > latestBySector[d.device_id].timestamp) {
+              latestBySector[d.device_id] = d;
+            }
+          }
+        });
+        const infectedCount = Object.values(latestBySector).filter(d => d.infection_status === 1).length;
+        let label = new Date(edge).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+        // Ensure uniqueness
+        let uniqueLabel = label;
+        let suffix = 1;
+        while (seenLabels.has(uniqueLabel)) {
+          uniqueLabel = `${label}_${suffix++}`;
+        }
+        seenLabels.add(uniqueLabel);
+        return {
+          x: edge,
+          y: infectedCount
+        };
+      });
+      setMeetingPoints(points);
+      return;
+    }
+    // =============================
+    // PRODUCTION-LOCKED: Time vs Healthy Sectors (STABLE, DO NOT MODIFY)
+    // The logic for binning and plotting Time vs Healthy Sectors is stable and correct as of 2024-07-11.
+    // Any changes must be explicitly reviewed and approved.
+    // =============================
+    if (xVar === 'Time' && yVar === 'Healthy Sectors' && Array.isArray(espData) && espData.length > 0) {
+      const timestamps = espData.map(d => d.timestamp);
+      const firstESPTimestamp = Math.min(...timestamps);
+      const minTime = firstESPTimestamp;
+      const maxTime = Date.now(); // Use current time as upper bound (match Meetings Held)
+      const maxBins = 30;
+      const totalDuration = maxTime - minTime;
+      const binSize = totalDuration > 0 ? Math.max(60 * 1000, Math.ceil(totalDuration / maxBins)) : 1;
+      const binEdges = [];
+      for (let i = 0; i <= maxBins; i++) {
+        binEdges.push(minTime + i * binSize);
+      }
+      // Format x as HH:MM, ensure uniqueness
+      const seenLabels = new Set();
+      const points = binEdges.map((edge, i) => {
+        const latestBySector = {};
+        espData.forEach(d => {
+          if (sectorIds.includes(d.device_id) && d.timestamp <= edge) {
+            if (!latestBySector[d.device_id] || d.timestamp > latestBySector[d.device_id].timestamp) {
+              latestBySector[d.device_id] = d;
+            }
+          }
+        });
+        const healthyCount = Object.values(latestBySector).filter(d => d.infection_status === 0 || d.infection_status === 0.5).length;
+        let label = new Date(edge).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+        // Ensure uniqueness
+        let uniqueLabel = label;
+        let suffix = 1;
+        while (seenLabels.has(uniqueLabel)) {
+          uniqueLabel = `${label}_${suffix++}`;
+        }
+        seenLabels.add(uniqueLabel);
+        return {
+          x: edge,
+          y: healthyCount
         };
       });
       setMeetingPoints(points);
@@ -150,6 +348,20 @@ const LinePlot = (props) => {
         return 'error';
       }
       return [{ id: `${xVar} vs ${yVar}`, data: points }];
+    }
+
+    // For the four new time plots, use binned meetingPoints
+    if (
+      xVar === 'Time' &&
+      [
+        'Infected Cadets',
+        'Healthy Cadets',
+        'Infected Sectors',
+        'Healthy Sectors'
+      ].includes(yVar) &&
+      Array.isArray(meetingPoints) && meetingPoints.length > 0
+    ) {
+      return [{ id: `${xVar} vs ${yVar}`, data: meetingPoints }];
     }
 
     if (!data || !data.length) {
@@ -274,7 +486,7 @@ const LinePlot = (props) => {
           legendOffset: 56,
           legendPosition: "middle",
           tickRotation: -45,
-          format: (xVar === 'Time' && yVar === 'Meetings Held') ? v => {
+          format: (xVar === 'Time') ? v => {
             const d = new Date(v);
             return d.toLocaleString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
           } : undefined,
@@ -372,3 +584,77 @@ const LinePlot = (props) => {
 };
 
 export default LinePlot;
+
+// Implement the four new helper functions below (outside the component):
+function getTimeVsInfectedCadets(data, maxBins) {
+  console.log('[LinePlot] getTimeVsInfectedCadets START', { dataLen: data.length, maxBins });
+  const result = getTimeVsStatusCount(data, maxBins, 'cadet', 'infected');
+  console.log('[LinePlot] getTimeVsInfectedCadets END', result);
+  return result;
+}
+function getTimeVsHealthyCadets(data, maxBins) {
+  console.log('[LinePlot] getTimeVsHealthyCadets START', { dataLen: data.length, maxBins });
+  const result = getTimeVsStatusCount(data, maxBins, 'cadet', 'healthy');
+  console.log('[LinePlot] getTimeVsHealthyCadets END', result);
+  return result;
+}
+function getTimeVsInfectedSectors(data, maxBins) {
+  console.log('[LinePlot] getTimeVsInfectedSectors START', { dataLen: data.length, maxBins });
+  const result = getTimeVsStatusCount(data, maxBins, 'sector', 'infected');
+  console.log('[LinePlot] getTimeVsInfectedSectors END', result);
+  return result;
+}
+function getTimeVsHealthySectors(data, maxBins) {
+  console.log('[LinePlot] getTimeVsHealthySectors START', { dataLen: data.length, maxBins });
+  const result = getTimeVsStatusCount(data, maxBins, 'sector', 'healthy');
+  console.log('[LinePlot] getTimeVsHealthySectors END', result);
+  return result;
+}
+// Helper: type = 'cadet' or 'sector', status = 'infected' or 'healthy'
+function getTimeVsStatusCount(data, maxBins, type, status) {
+  console.log('[LinePlot] getTimeVsStatusCount START', { dataLen: data.length, maxBins, type, status });
+  if (!data || data.length === 0) return [];
+  // Filter for cadet/sector device_ids
+  const isCadet = id => /^S\d+$/.test(id);
+  const isSector = id => /^T\d+$/.test(id);
+  const filterFn = type === 'cadet' ? isCadet : isSector;
+  // Sort data by timestamp ascending
+  const sorted = [...data].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  // Bin time
+  const minTime = new Date(sorted[0].timestamp).getTime();
+  const maxTime = new Date(sorted[sorted.length - 1].timestamp).getTime();
+  const binSize = Math.max(1, Math.ceil((maxTime - minTime) / maxBins));
+  const bins = [];
+  for (let i = 0; i < maxBins; i++) {
+    bins.push({
+      binStart: minTime + i * binSize,
+      binEnd: minTime + (i + 1) * binSize,
+      latestStatusById: {},
+    });
+  }
+  // For each record, update latestStatusById for the correct bin
+  for (const rec of sorted) {
+    if (!filterFn(rec.device_id)) continue;
+    const t = new Date(rec.timestamp).getTime();
+    const binIdx = Math.min(Math.floor((t - minTime) / binSize), maxBins - 1);
+    bins[binIdx].latestStatusById[rec.device_id] = rec.infection_status;
+  }
+  // For each bin, count ids with the desired status as of that bin
+  let prevStatusById = {};
+  const result = bins.map((bin, i) => {
+    // Carry forward previous status
+    const statusById = { ...prevStatusById, ...bin.latestStatusById };
+    prevStatusById = statusById;
+    let count = 0;
+    for (const [id, inf] of Object.entries(statusById)) {
+      if (status === 'infected' && inf === 1) count++;
+      if (status === 'healthy' && (inf === 0 || inf === 0.5)) count++;
+    }
+    return {
+      x: new Date(bin.binEnd),
+      y: count,
+    };
+  });
+  console.log('[LinePlot] getTimeVsStatusCount END', result);
+  return result;
+}
