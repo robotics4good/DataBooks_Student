@@ -23,7 +23,7 @@ export const JOURNAL_QUESTIONS = [
   // Q15: Only line plot
   "Head back to the data plots tab. This time, let's compare two different variables using a line plot from the dropdown menu. For the 'x' axis, let's click \"Time,\" and for the 'y' axis, let's click \"Infected Cadets.\" With this plot, would you say that the number of infected cadets has increased over time?",
   // Q16: Only line plot
-  "What makes the line plot helpful in answering the previous question? Hint: How many variables did you click for your plot in Round 1 as compared to Round 2?",
+  "What makes the line plot helpful in answering the previous question?",
   // ROUND 3
   "Earlier in Journal 2, we asked if you stayed with the same partner for your Round 1 and 2 tasks. Did you pick a new partner (different from Round 1 AND Round 2) for this task? Do you think that changing partners might increase the chance of you getting infected? In a few words, explain your reasoning.",
   // Round 3: Only line plot
@@ -142,7 +142,7 @@ const ROUND_QUESTIONS = [
     // Q15: Only line plot
     "Head back to the data plots tab. This time, let's compare two different variables using a line plot from the dropdown menu. For the 'x' axis, let's click \"Time,\" and for the 'y' axis, let's click \"Infected Cadets.\" With this plot, would you say that the number of infected cadets has increased over time?",
     // Q16: Only line plot
-    "What makes the line plot helpful in answering the previous question? Hint: How many variables did you click for your plot in Round 1 as compared to Round 2?"
+    "What makes the line plot helpful in answering the previous question?"
   ],
   [ // Round 3
     "Earlier in Journal 2, we asked if you stayed with the same partner for your Round 1 and 2 tasks. Did you pick a new partner (different from Round 1 AND Round 2) for this task? Do you think that changing partners might increase the chance of you getting infected? In a few words, explain your reasoning.",
