@@ -10,6 +10,9 @@ export const playerNames = [
   "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12"
 ];
 
+// Sector IDs for ESP data
+export const sectorIds = ["T1", "T2", "T3", "T4", "T5", "T6"];
+
 // Modular config for each plot type
 export const plotConfigs = {
   line: {

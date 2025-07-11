@@ -1,32 +1,30 @@
-// plots/line_plot.js - Game-controlled data access
-// All time handling uses local device time only
+// LinePlot.js - Comprehensive line plot for ESP data and meeting logs
 import React from 'react';
 import { ResponsiveLine } from "@nivo/line";
 import { getLocalTimeOnlyString } from '../utils/timeUtils';
 import { fetchMeetingLogTimestamps } from '../hooks/useESPData';
-import { getDatabase, ref, get } from 'firebase/database';
-import { playerNames } from './plotConfigs';
-const sectorIds = ["T1","T2","T3","T4","T5","T6"];
-
-const variableMap = {
-  'Time': item => getLocalTimeOnlyString(new Date(item.timestamp)),
-  'Meetings Held': item => item.meetings_held,
-  'Infected Sectors': item => item.infected_sectors,
-  'Infected Cadets': item => item.infected_cadets,
-  'Healthy Sectors': item => item.healthy_sectors,
-  'Healthy Cadets': item => item.healthy_cadets,
-};
+import { playerNames, sectorIds } from './plotConfigs';
+import { getVariableValue, applyFilters, calculateStats, getUniqueValues, initializePersonFilter, initializeSectorFilter, transformData } from './plotUtils';
 
 const LinePlot = (props) => {
-  console.log('[LinePlot] props:', props);
-  const { data = [], xVar = 'Time', yVar = 'Infected Cadets', sessionId } = props;
+  const { 
+    data = [], 
+    xVar = 'Time', 
+    yVar = 'Infected Cadets', 
+    sessionId,
+    personFilter,
+    sectorFilter,
+    meetingEndsSanDiego = []
+  } = props;
+
   const [meetingPoints, setMeetingPoints] = React.useState(null);
+
   // Special case: Time vs Meetings Held with dynamic binning
   const isTimeVsMeetings = xVar === 'Time' && yVar === 'Meetings Held';
+  const isMeetingsVsTime = xVar === 'Meetings Held' && yVar === 'Time';
 
   React.useEffect(() => {
-    if (xVar === 'Meetings Held' && yVar === 'Time' && sessionId) {
-      console.log('[LinePlot] Fetching MeetingLogs for sessionId:', sessionId);
+    if (isMeetingsVsTime && sessionId) {
       fetchMeetingLogTimestamps(sessionId).then(timestamps => {
         if (!timestamps.length) {
           setMeetingPoints([]);
@@ -35,7 +33,7 @@ const LinePlot = (props) => {
         const first = timestamps[0];
         const points = timestamps.map((t, i) => ({
           x: i + 1,
-          y: (t - first) / 60000 // true minutes elapsed since first meeting, can be decimal
+          y: (t - first) / 60000 // minutes elapsed since first meeting
         }));
         setMeetingPoints(points);
       });
@@ -48,101 +46,77 @@ const LinePlot = (props) => {
     if (!data || !data.length) {
       return [];
     }
-    if (isTimeVsMeetings) {
-      // Get first ESP packet time and now (local time at plot render)
-      const firstTime = new Date(data[0].timestamp);
-      const now = new Date(); // Use current local time as upper bound
-      const numBins = 10;
-      const binSizeMs = (now - firstTime) / numBins;
-      // Get all unique meeting counts and their times
-      const meetingTimes = data
-        .filter(item => {
-          if (typeof item.meetings_held !== 'number' || !isFinite(item.meetings_held)) {
-            return false;
-          }
-          return true;
-        })
-        .map(item => ({
-          time: new Date(item.timestamp),
-          count: Number.isFinite(item.meetings_held) ? item.meetings_held : 0
-        }));
-      // Generate bins from firstTime to now
+
+    // 1. Meetings Held vs Time (step plot from meeting logs)
+    if (isMeetingsVsTime && Array.isArray(meetingEndsSanDiego)) {
+      const meetingEndTimes = meetingEndsSanDiego.sort((a, b) => a - b);
+      const firstTime = data[0]?.localTime || (meetingEndTimes[0] || new Date());
+      const lastTime = new Date();
+      const totalMinutes = Math.ceil((lastTime - firstTime) / 60000);
+      const numBins = Math.min(30, Math.max(3, Math.ceil(totalMinutes / 5)));
+      const binSizeMs = (lastTime - firstTime) / numBins;
+      
       const bins = [];
       for (let i = 0; i <= numBins; i++) {
         const binTime = new Date(firstTime.getTime() + i * binSizeMs);
         bins.push(binTime);
       }
-      // For each bin, find the max meetings_held up to that time
-      let lastCount = 0;
-      let binData = bins.map(binTime => {
-        const upToBin = meetingTimes.filter(mt => mt.time <= binTime);
-        const count = upToBin.length > 0 ? Math.max(...upToBin.map(mt => mt.count)) : lastCount;
-        lastCount = count;
-        return {
-          x: getLocalTimeOnlyString(binTime),
-          y: Number.isFinite(count) ? count : 0
-        };
-      });
-      // Filter out any points with non-numeric or NaN y (but keep zeros)
-      binData = binData.filter(pt => typeof pt.y === 'number' && !isNaN(pt.y));
+      
+      const binData = bins.map(binTime => ({
+        x: getLocalTimeOnlyString(binTime),
+        y: meetingEndTimes.filter(mt => mt <= binTime).length
+      }));
+      
       return [{ id: 'Meetings Held', data: binData }];
     }
-    if (xVar === 'Meetings Held' && yVar === 'Time' && meetingPoints) {
-      // Use meetingPoints as (x: meeting number, y: minutes since first meeting)
-      return [{ id: 'Elapsed Minutes', data: meetingPoints }];
-    }
-    // NEW: Time binning for all X = 'Time' cases
+
+    // 2. Time vs [other variables] (dynamic binning)
     if (xVar === 'Time' && [
-      'Infected Cadets', 'Infected Sectors', 'Healthy Cadets', 'Healthy Sectors'
+      'Infected Cadets', 'Infected Sectors', 'Healthy Cadets', 'Healthy Sectors',
+      'Button A Presses', 'Button B Presses', 'Interactions', 'Beacon Array',
+      'Total Packets', 'Unique Devices', 'Infection Rate', 'Activity Level'
     ].includes(yVar)) {
-      // Bin by time
-      const firstTime = new Date(data[0].timestamp);
-      const lastTime = new Date(data[data.length - 1].timestamp);
-      const maxMinutes = Math.min(90, Math.ceil((lastTime - firstTime) / 60000));
-      const numBins = 10;
-      const binSizeMs = (90 * 60000) / numBins; // 90 minutes max, 10 bins
-      // Create bins
-      const bins = [];
-      for (let i = 0; i <= numBins; i++) {
-        const binTime = new Date(firstTime.getTime() + i * binSizeMs);
-        bins.push(binTime);
-      }
-      // For each bin, count the number of Y variable present at that time
-      // For each device, find the latest record up to that bin
-      // FILTER: Only include devices that are selected in the filter
-      let filterSet = null;
-      if (yVar === 'Infected Cadets' || yVar === 'Healthy Cadets') {
-        filterSet = new Set((props.personFilter && Object.entries(props.personFilter).filter(([id, sel]) => sel).map(([id]) => id)) || []);
-      } else if (yVar === 'Infected Sectors' || yVar === 'Healthy Sectors') {
-        filterSet = new Set((props.sectorFilter && Object.entries(props.sectorFilter).filter(([id, sel]) => sel).map(([id]) => id)) || []);
-      }
-      const deviceIds = Array.from(new Set(data.map(d => d.device_id))).filter(id => !filterSet || filterSet.has(id));
-      const series = [{ id: yVar, data: [] }];
-      for (let i = 0; i < bins.length; i++) {
-        const binEnd = bins[i];
-        // For each device, get the latest record up to this bin
-        let count = 0;
-        deviceIds.forEach(id => {
-          const records = data.filter(d => d.device_id === id && d.localTime <= binEnd);
-          if (records.length > 0) {
-            const latest = records[records.length - 1];
-            if (yVar === 'Infected Cadets' && latest.infected_cadets) count++;
-            if (yVar === 'Infected Sectors' && latest.infected_sectors) count++;
-            if (yVar === 'Healthy Cadets' && latest.healthy_cadets) count++;
-            if (yVar === 'Healthy Sectors' && latest.healthy_sectors) count++;
-          }
-        });
-        series[0].data.push({ x: getLocalTimeOnlyString(binEnd), y: count });
-      }
-      return series;
+      return transformData.timeBinning(data, xVar, yVar, 20);
     }
-    // For all other allowed combinations, use the filtered data as provided
-    // Group by label (id) if present, otherwise single series
-    if (data.length > 0 && data[0].label && data[0].data) {
-      return data.map(series => ({ id: series.label, data: series.data }));
+
+    // 3. Hour vs [variables] (hour-based binning)
+    if (xVar === 'Hour') {
+      const hourBins = {};
+      for (let hour = 0; hour < 24; hour++) {
+        hourBins[hour] = [];
+      }
+      
+      data.forEach(item => {
+        const hour = item.hour || new Date(item.timestamp).getHours();
+        if (hourBins[hour]) {
+          hourBins[hour].push(item);
+        }
+      });
+      
+      const yAccessor = getVariableValue(yVar);
+      const hourData = Object.entries(hourBins).map(([hour, items]) => {
+        const y = items.reduce((sum, item) => sum + (yAccessor(item) || 0), 0);
+        return { x: `${hour}:00`, y };
+      });
+      
+      return [{ id: `${xVar} vs ${yVar}`, data: hourData }];
     }
-    // Fallback: single line for all data
-    return [{ id: 'ESP Data', data }];
+
+    // 4. All other combinations: plot raw filtered data
+    const xAccessor = getVariableValue(xVar);
+    const yAccessor = getVariableValue(yVar);
+    
+    const points = data.map(item => {
+      const x = xAccessor(item);
+      const y = yAccessor(item);
+      return { x, y };
+    }).filter(pt => (
+      pt.x !== undefined && pt.y !== undefined && pt.x !== null && pt.y !== null &&
+      (typeof pt.x !== 'number' || !isNaN(pt.x)) &&
+      (typeof pt.y !== 'number' || !isNaN(pt.y))
+    ));
+    
+    return [{ id: `${xVar} vs ${yVar}`, data: points }];
   };
 
   const lineData = getLineData();
@@ -173,6 +147,7 @@ const LinePlot = (props) => {
   const allValues = lineData.flatMap(series => series.data.map(point => point.y)).filter(y => typeof y === 'number');
   const maxY = allValues.length > 0 ? Math.max(...allValues) : 100;
   const minY = allValues.length > 0 ? Math.min(...allValues) : 0;
+  
   // For time-binned plots, set yMax to number of unique IDs in filtered data
   let yMaxOverride = null;
   if (xVar === 'Time' && ['Infected Cadets', 'Healthy Cadets'].includes(yVar)) {
@@ -184,16 +159,16 @@ const LinePlot = (props) => {
   return (
     <div style={{ height: "100%", width: "100%", maxHeight: 400 }}>
       <div style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: 8 }}>
-        {`Line plot of ${xVar} vs ${yVar}`}
+        {`Line Plot of ${xVar} vs ${yVar}`}
       </div>
       <ResponsiveLine
         data={lineData}
-        margin={{ top: 60, right: 90, bottom: 110, left: 90 }}
+        margin={{ top: 60, right: 90, bottom: 130, left: 90 }}
         xScale={{ type: 'point' }}
         yScale={{ 
           type: "linear", 
-          min: xVar === 'Meetings Held' && yVar === 'Time' ? 0 : Math.max(0, minY - (maxY - minY) * 0.1), 
-          max: yMaxOverride !== null ? yMaxOverride : (xVar === 'Meetings Held' && yVar === 'Time' ? 'auto' : maxY + (maxY - minY) * 0.1)
+          min: isMeetingsVsTime ? 0 : Math.max(0, minY - (maxY - minY) * 0.1), 
+          max: yMaxOverride !== null ? yMaxOverride : (isMeetingsVsTime ? 'auto' : maxY + (maxY - minY) * 0.1)
         }}
         axisBottom={{
           legend: xVar,
@@ -202,10 +177,10 @@ const LinePlot = (props) => {
           tickRotation: -45,
         }}
         axisLeft={{ 
-          legend: xVar === 'Meetings Held' && yVar === 'Time' ? 'Elapsed Minutes' : yVar, 
+          legend: isMeetingsVsTime ? 'Elapsed Minutes' : yVar, 
           legendOffset: -60, 
           legendPosition: "middle",
-          tickValues: xVar === 'Meetings Held' && yVar === 'Time' && lineData[0]?.data?.length > 0 ? (() => {
+          tickValues: isMeetingsVsTime && lineData[0]?.data?.length > 0 ? (() => {
             const ys = lineData[0].data.map(pt => Math.round(pt.y));
             const minY = Math.min(...ys);
             const maxY = Math.max(...ys);
@@ -219,7 +194,7 @@ const LinePlot = (props) => {
             if (ticks[ticks.length - 1] !== maxY) ticks.push(maxY);
             return ticks;
           })() : undefined,
-          tickFormat: xVar === 'Meetings Held' && yVar === 'Time' ? v => Math.round(v) : undefined,
+          tickFormat: isMeetingsVsTime ? v => Math.round(v) : undefined,
         }}
         colors={{ scheme: "category10" }}
         pointSize={8}
@@ -263,21 +238,43 @@ const LinePlot = (props) => {
           },
         }}
         legends={[
-            {
-                anchor: 'bottom-right',
-                direction: 'column',
-                translateX: 80,
-                itemWidth: 100,
-                itemHeight: 16,
-                itemsSpacing: 3,
-                symbolShape: 'circle'
-            }
+          {
+            anchor: 'bottom-right',
+            direction: 'column',
+            translateX: 80,
+            itemWidth: 100,
+            itemHeight: 16,
+            itemsSpacing: 3,
+            symbolSize: 12,
+            symbolShape: 'circle',
+          },
         ]}
-        tooltip={({ point }) => (
-          <div style={{ background: 'white', padding: 8, border: '1px solid #ccc', borderRadius: 4 }}>
-            <strong>x: {point.data.x}, y: {xVar === 'Meetings Held' && yVar === 'Time' ? point.data.y.toFixed(2) : Math.round(point.data.y)}</strong>
-          </div>
-        )}
+        enableSlices="x"
+        sliceTooltip={({ slice }) => {
+          return (
+            <div
+              style={{
+                background: 'white',
+                padding: '9px 12px',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              }}
+            >
+              {slice.points.map(point => (
+                <div
+                  key={point.id}
+                  style={{
+                    color: point.serieColor,
+                    padding: '3px 0',
+                  }}
+                >
+                  <strong>{point.serieId}</strong>: {point.data.y}
+                </div>
+              ))}
+            </div>
+          );
+        }}
       />
     </div>
   );

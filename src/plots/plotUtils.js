@@ -1,160 +1,211 @@
-// plotUtils.js - Utility functions for plot component logic
+// plotUtils.js - Utility functions for plot data processing
+import { playerNames, sectorIds } from './plotConfigs';
 
-/**
- * Check if a variable is allowed for Y given X
- * @param {Object} allowedMatrix - The allowed variable combinations matrix
- * @param {string} x - The X variable
- * @param {string} y - The Y variable
- * @returns {boolean} - Whether the combination is allowed
- */
-export function isYAllowed(allowedMatrix, x, y) {
-  if (!allowedMatrix || !x || !y) return true;
-  return allowedMatrix[x] && allowedMatrix[x][y];
-}
-
-/**
- * Check if a variable is allowed for X given Y
- * @param {Object} allowedMatrix - The allowed variable combinations matrix
- * @param {string} y - The Y variable
- * @param {string} x - The X variable
- * @returns {boolean} - Whether the combination is allowed
- */
-export function isXAllowed(allowedMatrix, y, x) {
-  if (!allowedMatrix || !x || !y) return true;
-  return allowedMatrix[x] && allowedMatrix[x][y];
-}
-
-/**
- * Initialize variable filters for a given set of variables
- * @param {Array} variables - Array of variable names
- * @returns {Object} - Object with all variables set to false
- */
-export function initializeVariableFilters(variables) {
-  if (!variables) return {};
-  return variables.reduce((acc, v) => ({ ...acc, [v]: false }), {});
-}
-
-/**
- * Initialize cadet filter for all player names
- * @param {Array} playerNames - Array of player names
- * @returns {Object} - Object with all players set to false
- */
-export function initializeCadetFilter(playerNames) {
-  return playerNames.reduce((acc, name) => ({ ...acc, [name]: false }), {});
-}
-
-/**
- * Filter data based on selected variables and cadet/sector filter
- * @param {Array} data - Raw data array
- * @param {Array} xVars - Selected X variables
- * @param {Array} yVars - Selected Y variables
- * @param {Object} cadetFilter - Cadet filter object (keys: device IDs, values: boolean)
- * @param {Object} sectorFilter - Sector filter object (keys: sector IDs, values: boolean)
- * @returns {Array} - Array of series objects for plotting
- */
-export function filterData(data, xVars, yVars, cadetFilter, sectorFilter) {
-  if (!Array.isArray(data)) return [];
-  // Determine if filter should be applied
-  const cadetVars = ["Infected Cadets", "Healthy Cadets"];
-  const sectorVars = ["Infected Sectors", "Healthy Sectors"];
-  const xIsCadet = xVars && xVars.length > 0 && cadetVars.includes(xVars[0]);
-  const yIsCadet = yVars && yVars.length > 0 && cadetVars.includes(yVars[0]);
-  const xIsSector = xVars && xVars.length > 0 && sectorVars.includes(xVars[0]);
-  const yIsSector = yVars && yVars.length > 0 && sectorVars.includes(yVars[0]);
-  let filtered = data;
-  // Apply cadet filter if relevant
-  if ((xIsCadet || yIsCadet) && cadetFilter) {
-    const selectedCadets = Object.entries(cadetFilter)
-      .filter(([id, selected]) => selected)
-      .map(([id]) => id);
-    if (selectedCadets.length > 0) {
-      filtered = filtered.filter(record => {
-        if (cadetVars.includes(xVars[0]) || cadetVars.includes(yVars[0])) {
-          return selectedCadets.includes(record.device_id);
-        }
-        return true;
-      });
-    }
+// Variable accessor functions for ESP data
+export const getVariableValue = (dataPoint, variableName) => {
+  switch (variableName) {
+    case "Time":
+      return dataPoint.timestamp;
+    case "Meetings Held":
+      return dataPoint.meetings_held || 0;
+    case "Infected Sectors":
+      return dataPoint.infectedSectors || 0;
+    case "Infected Cadets":
+      return dataPoint.infectedCadets || 0;
+    case "Healthy Sectors":
+      return dataPoint.healthySectors || 0;
+    case "Healthy Cadets":
+      return dataPoint.healthyCadets || 0;
+    default:
+      return 0;
   }
-  // Apply sector filter if relevant
-  if ((xIsSector || yIsSector) && sectorFilter) {
-    const selectedSectors = Object.entries(sectorFilter)
-      .filter(([id, selected]) => selected)
-      .map(([id]) => id);
-    if (selectedSectors.length > 0) {
-      filtered = filtered.filter(record => {
-        if (sectorVars.includes(xVars[0]) || sectorVars.includes(yVars[0])) {
-          return selectedSectors.includes(record.device_id);
-        }
-        return true;
-      });
-    }
+};
+
+// Data transformation functions
+export const transformData = (data, xVariable, yVariable, transformType = 'none', binCount = 10) => {
+  if (!data || data.length === 0) return [];
+
+  switch (transformType) {
+    case 'bin':
+      return binData(data, xVariable, yVariable, binCount);
+    case 'thin':
+      return thinData(data, xVariable, yVariable);
+    case 'aggregate':
+      return aggregateData(data, xVariable, yVariable);
+    default:
+      return data;
   }
-  // After filtering by selected IDs, further filter by current infection status for sector variables
-  if (yVars && yVars.length > 0) {
-    if (yVars[0] === 'Infected Sectors') {
-      filtered = filtered.filter(record => record.infection_status === 1);
-    } else if (yVars[0] === 'Healthy Sectors') {
-      filtered = filtered.filter(record => record.infection_status === 0);
-    }
-  }
-  // If no x/y vars selected, return empty array (prevents empty plot)
-  if (!xVars || !yVars || xVars.length === 0 || yVars.length === 0) return [];
-  // Mapping from UI variable names to data field names
-  const variableFieldMap = {
-    "Time": "localTime", // Use localTime (Date object in San Diego time)
-    "Meetings Held": "meetings_held",
-    "Infected Cadets": "infected_cadets",
-    "Infected Sectors": "infected_sectors",
-    "Healthy Cadets": "healthy_cadets",
-    "Healthy Sectors": "healthy_sectors"
-  };
-  // Group by device_id
-  const grouped = {};
-  for (const record of filtered) {
-    const id = record.device_id;
-    if (!grouped[id]) grouped[id] = [];
-    // For each yVar, create a point for each xVar/yVar combo
-    for (const yVar of yVars) {
-      for (const xVar of xVars) {
-        const xField = variableFieldMap[xVar];
-        const yField = variableFieldMap[yVar];
-        if (xField == null || yField == null) continue;
-        if (record[xField] == null || record[yField] == null) continue;
-        grouped[id].push({ x: record[xField], y: record[yField] });
+};
+
+// Binning function for histogram-like data
+const binData = (data, xVariable, yVariable, binCount) => {
+  if (xVariable === "Time") {
+    // Time-based binning
+    const timeRange = Math.max(...data.map(d => d.timestamp)) - Math.min(...data.map(d => d.timestamp));
+    const binSize = timeRange / binCount;
+    
+    return data.reduce((bins, point) => {
+      const binIndex = Math.floor((point.timestamp - Math.min(...data.map(d => d.timestamp))) / binSize);
+      const binKey = Math.min(...data.map(d => d.timestamp)) + (binIndex * binSize);
+      
+      if (!bins[binKey]) {
+        bins[binKey] = {
+          timestamp: binKey,
+          count: 0,
+          sum: 0,
+          values: []
+        };
       }
-    }
-  }
-  // Convert to series array
-  return Object.entries(grouped).map(([id, points]) => ({
-    label: id,
-    data: points
-  }));
-}
-
-/**
- * Handle variable selection/deselection
- * @param {Array} currentVars - Current selected variables
- * @param {string} variable - Variable to toggle
- * @param {boolean} isSelected - Whether to add or remove
- * @returns {Array} - Updated variables array
- */
-export function toggleVariable(currentVars, variable, isSelected) {
-  if (isSelected) {
-    return [...currentVars, variable];
+      
+      bins[binKey].count++;
+      bins[binKey].sum += getVariableValue(point, yVariable);
+      bins[binKey].values.push(getVariableValue(point, yVariable));
+      
+      return bins;
+    }, {});
   } else {
-    return currentVars.filter(v => v !== variable);
+    // Value-based binning
+    const values = data.map(d => getVariableValue(d, xVariable));
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const binSize = (max - min) / binCount;
+    
+    return data.reduce((bins, point) => {
+      const value = getVariableValue(point, xVariable);
+      const binIndex = Math.floor((value - min) / binSize);
+      const binKey = min + (binIndex * binSize);
+      
+      if (!bins[binKey]) {
+        bins[binKey] = {
+          x: binKey,
+          count: 0,
+          sum: 0,
+          values: []
+        };
+      }
+      
+      bins[binKey].count++;
+      bins[binKey].sum += getVariableValue(point, yVariable);
+      bins[binKey].values.push(getVariableValue(point, yVariable));
+      
+      return bins;
+    }, {});
   }
-}
+};
 
-/**
- * Log plot action with label
- * @param {Function} logAction - Logging function
- * @param {string} plotLabel - Label for the plot
- * @param {string} action - Action description
- */
-export function logPlotAction(logAction, plotLabel, action) {
-  if (logAction) {
-    logAction(`${plotLabel} ${action}`);
+// Thinning function to reduce data points
+const thinData = (data, xVariable, yVariable) => {
+  if (data.length <= 100) return data; // Don't thin if already small
+  
+  const step = Math.ceil(data.length / 100);
+  return data.filter((_, index) => index % step === 0);
+};
+
+// Aggregation function
+const aggregateData = (data, xVariable, yVariable) => {
+  if (xVariable === "Time") {
+    // Time-based aggregation
+    return data.reduce((acc, point) => {
+      const timeKey = Math.floor(point.timestamp / 60000) * 60000; // Round to minute
+      
+      if (!acc[timeKey]) {
+        acc[timeKey] = {
+          timestamp: timeKey,
+          count: 0,
+          sum: 0,
+          values: []
+        };
+      }
+      
+      acc[timeKey].count++;
+      acc[timeKey].sum += getVariableValue(point, yVariable);
+      acc[timeKey].values.push(getVariableValue(point, yVariable));
+      
+      return acc;
+    }, {});
+  } else {
+    // Value-based aggregation
+    return data.reduce((acc, point) => {
+      const value = getVariableValue(point, xVariable);
+      const key = Math.round(value * 100) / 100; // Round to 2 decimal places
+      
+      if (!acc[key]) {
+        acc[key] = {
+          x: key,
+          count: 0,
+          sum: 0,
+          values: []
+        };
+      }
+      
+      acc[key].count++;
+      acc[key].sum += getVariableValue(point, yVariable);
+      acc[key].values.push(getVariableValue(point, yVariable));
+      
+      return acc;
+    }, {});
   }
-} 
+};
+
+// Filter functions
+export const initializePersonFilter = () => {
+  return playerNames.reduce((acc, name) => {
+    acc[name] = true;
+    return acc;
+  }, {});
+};
+
+export const initializeSectorFilter = () => {
+  return sectorIds.reduce((acc, id) => {
+    acc[id] = true;
+    return acc;
+  }, {});
+};
+
+// Apply filters to data
+export const applyFilters = (data, personFilter, sectorFilter) => {
+  if (!data) return [];
+  
+  return data.filter(point => {
+    // Apply person filter if device_id exists
+    if (point.device_id && personFilter) {
+      const deviceId = point.device_id;
+      if (!personFilter[deviceId]) return false;
+    }
+    
+    // Apply sector filter if sector_id exists
+    if (point.sector_id && sectorFilter) {
+      const sectorId = point.sector_id;
+      if (!sectorFilter[sectorId]) return false;
+    }
+    
+    return true;
+  });
+};
+
+// Get unique values for a variable
+export const getUniqueValues = (data, variableName) => {
+  if (!data || data.length === 0) return [];
+  
+  const values = data.map(d => getVariableValue(d, variableName));
+  return [...new Set(values)].sort((a, b) => a - b);
+};
+
+// Calculate statistics for a variable
+export const calculateStats = (data, variableName) => {
+  if (!data || data.length === 0) return { min: 0, max: 0, mean: 0, median: 0 };
+  
+  const values = data.map(d => getVariableValue(d, variableName)).filter(v => !isNaN(v));
+  
+  if (values.length === 0) return { min: 0, max: 0, mean: 0, median: 0 };
+  
+  const sorted = values.sort((a, b) => a - b);
+  const sum = values.reduce((a, b) => a + b, 0);
+  
+  return {
+    min: Math.min(...values),
+    max: Math.max(...values),
+    mean: sum / values.length,
+    median: sorted[Math.floor(sorted.length / 2)]
+  };
+}; 

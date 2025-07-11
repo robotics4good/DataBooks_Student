@@ -58,10 +58,11 @@ export function useESPData(enableRealTime = false) {
       const snapshot = await get(meetingLogsRef);
       const logs = snapshot.val();
       if (!logs) return [];
-      // Only keep MEETINGEND events, parse timestamp as Date (no conversion)
-      return Object.values(logs)
-        .filter(log => log.event === 'MEETINGEND')
-        .map(log => new Date(log.timestamp))
+      // Only keep MEETINGEND events, parse key and convert to San Diego time
+      return Object.keys(logs)
+        .filter(key => logs[key]?.event === 'MEETINGEND')
+        .map(key => toSanDiegoDate(parseMeetingLogKey(key)))
+        .filter(d => d instanceof Date && !isNaN(d))
         .sort((a, b) => a - b);
     } catch (err) {
       return [];
@@ -489,8 +490,9 @@ export async function fetchMeetingLogTimestamps(sessionId) {
     // Only keep MEETINGEND events
     const filteredKeys = Object.keys(logs).filter(key => logs[key]?.event === 'MEETINGEND');
     console.log('[fetchMeetingLogTimestamps] Raw keys (MEETINGEND only):', filteredKeys);
-    const parsed = filteredKeys.map(parseMeetingLogKey);
-    console.log('[fetchMeetingLogTimestamps] Parsed timestamps:', parsed);
+    // Parse and convert to San Diego time
+    const parsed = filteredKeys.map(key => toSanDiegoDate(parseMeetingLogKey(key)));
+    console.log('[fetchMeetingLogTimestamps] Parsed timestamps (San Diego time):', parsed);
     if (parsed.length > 1) {
       const first = parsed[0];
       const elapsed = parsed.map((t, i) => ({ x: i + 1, y: Math.round((t - first) / 60000) }));

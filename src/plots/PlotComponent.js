@@ -1,9 +1,9 @@
 import React from 'react';
 import styles from './PlotComponent.module.css';
 import { usePlotState } from './usePlotState';
-import { filterData } from './plotUtils';
+import { applyFilters, getVariableValue, calculateStats, getUniqueValues, initializePersonFilter, initializeSectorFilter, transformData } from './plotUtils';
 import PlotControls from './PlotControls';
-import { fetchMeetingLogTimestamps } from '../hooks/useESPData';
+import { useMeetingLogs } from '../hooks/useMeetingLogs';
 import { useEffect, useState } from 'react';
 
 const PlotComponent = ({ plotLabel, theme, data, logAction, rawData, allInfectedCadets, allHealthyCadets, allInfectedSectors, allHealthySectors }) => {
@@ -31,9 +31,8 @@ const PlotComponent = ({ plotLabel, theme, data, logAction, rawData, allInfected
   } = usePlotState(plotLabel, logAction, data);
 
   // State for MeetingLogs plot data
-  const [meetingsPlotData, setMeetingsPlotData] = useState(null);
   const [sessionId, setSessionId] = useState(null);
-
+  
   // Fetch sessionId from Firebase when needed
   useEffect(() => {
     const shouldShowMeetingsPlot =
@@ -43,7 +42,6 @@ const PlotComponent = ({ plotLabel, theme, data, logAction, rawData, allInfected
       yVars[0] === 'Time';
     if (!shouldShowMeetingsPlot) {
       setSessionId(null);
-      setMeetingsPlotData(null); // Only clear when switching away
       return;
     }
     const fetchSessionId = async () => {
@@ -51,102 +49,131 @@ const PlotComponent = ({ plotLabel, theme, data, logAction, rawData, allInfected
         const { get, ref, db } = await import('../firebase');
         const sessionIdSnap = await get(ref(db, 'activeSessionId'));
         const sessionIdVal = sessionIdSnap.exists() ? sessionIdSnap.val() : null;
-        console.log('[PlotComponent] Got sessionId from Firebase:', sessionIdVal);
         setSessionId(sessionIdVal);
       } catch (err) {
-        console.error('[PlotComponent] Error fetching sessionId:', err);
         setSessionId(null);
       }
     };
     fetchSessionId();
   }, [plotType, xVars, yVars]);
 
-  // Fetch and transform MeetingLogs if needed
-  useEffect(() => {
-    const shouldShowMeetingsPlot =
-      plotType === 'line' &&
-      xVars && yVars &&
-      xVars[0] === 'Meetings Held' &&
-      yVars[0] === 'Time';
-    if (!shouldShowMeetingsPlot || !sessionId) {
-      // Only clear if switching away, not during fetch
-      if (!shouldShowMeetingsPlot) setMeetingsPlotData(null);
-      return;
-    }
-    const fetchData = async () => {
-      try {
-        console.log('[PlotComponent] Fetching MeetingLogs for sessionId:', sessionId);
-        const timestamps = await fetchMeetingLogTimestamps(sessionId);
-        console.log('[PlotComponent] MeetingLog timestamps:', timestamps);
-        if (!timestamps || timestamps.length === 0) {
-          setMeetingsPlotData([]);
-          console.log('[PlotComponent] No MeetingLogs found.');
-          return;
-        }
-        const t0 = timestamps[0];
-        const points = timestamps.map((date, idx) => ({
-          x: idx + 1,
-          y: Math.round((date - t0) / 60000),
-        }));
-        console.log('[PlotComponent] Computed meeting points:', points);
-        setMeetingsPlotData(points);
-      } catch (err) {
-        setMeetingsPlotData([]);
-        console.error('[PlotComponent] Error fetching MeetingLogs:', err);
-      }
-    };
-    fetchData();
-  }, [plotType, xVars, yVars, sessionId]);
+  // Use the new meeting log hook
+  const { meetingEnds, loading: meetingLogsLoading, error: meetingLogsError } = useMeetingLogs(sessionId);
 
   // Filter data for the selected variables and person/sector filter
-  const filteredData = filterData(data, xVars, yVars, cadetFilter, sectorFilter);
+  const filteredData = applyFilters(data, xVars, yVars, cadetFilter, sectorFilter);
+
+  // Diagnostic logs for audit
+  console.log('PLOT AUDIT:', {
+    plotType,
+    xVars,
+    yVars,
+    filteredData,
+    data,
+    cadetFilter,
+    sectorFilter,
+    rawData
+  });
 
   // Professional, robust empty data check
   const hasData = Array.isArray(filteredData) && filteredData.some(series => Array.isArray(series.data) && series.data.length > 0);
 
   // Decide which data to pass to PlotRenderer
   let plotDataToUse = data;
-  if (meetingsPlotData) {
-    plotDataToUse = [{ id: 'Elapsed Minutes', data: meetingsPlotData.map(point => ({ x: point.x, y: Math.round(point.y) })) }];
+  if (meetingEnds && meetingEnds.length > 0) {
+    plotDataToUse = [{ id: 'Elapsed Minutes', data: meetingEnds.map(point => ({ x: point.x, y: Math.round(point.y) })) }];
   }
-
-  // Failsafe: log the actual PlotRenderer being used
-  // (Remove all console.log, etc.)
 
   return (
     <div className={styles.plotContainer}>
       {/* Always reserve space for the plot or the no-data message */}
       <div className={styles.plotRenderer}>
-        {meetingsPlotData ? (
-          meetingsPlotData.length > 0 ? (
-            <PlotRenderer data={plotDataToUse} xVar={"Meetings Held"} yVar={"Time"} theme={theme} sessionId={sessionId} />
-          ) : (
-            <div style={{
-              height: '100%',
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              textAlign: 'center',
-              fontSize: '1.1rem',
-              color: '#666',
-              background: '#f8f3ea',
-              borderRadius: 8,
-              border: '1.5px solid #e0e0e0',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.07)'
-            }}>
-              No meeting data to display currently
-            </div>
-          )
+        {meetingEnds && meetingEnds.length > 0 ? (
+          <PlotRenderer 
+            data={plotDataToUse} 
+            xVar={"Meetings Held"} 
+            yVar={"Time"} 
+            theme={theme} 
+            sessionId={sessionId} 
+            meetingEndsSanDiego={meetingEnds} 
+          />
         ) : hasData ? (
           plotType === 'pie' ? (
-            <PlotRenderer theme={theme} logAction={logAction} />
+            <PlotRenderer 
+              data={data} 
+              selectedVariable={xVars[0]} 
+              theme={theme} 
+              logAction={logAction} 
+              sessionId={sessionId}
+              personFilter={cadetFilter}
+              sectorFilter={sectorFilter}
+              rawData={rawData}
+              allInfectedCadets={allInfectedCadets}
+              allHealthyCadets={allHealthyCadets}
+              allInfectedSectors={allInfectedSectors}
+              allHealthySectors={allHealthySectors}
+            />
           ) : plotType === 'line' ? (
-            <PlotRenderer data={data} xVar={xVars[0]} yVar={yVars[0]} theme={theme} personFilter={cadetFilter} sectorFilter={sectorFilter} />
+            <PlotRenderer 
+              data={data} 
+              xVar={xVars[0]} 
+              yVar={yVars[0]} 
+              theme={theme} 
+              personFilter={cadetFilter} 
+              sectorFilter={sectorFilter}
+              sessionId={sessionId}
+              meetingEndsSanDiego={meetingEnds}
+              rawData={rawData}
+              allInfectedCadets={allInfectedCadets}
+              allHealthyCadets={allHealthyCadets}
+              allInfectedSectors={allInfectedSectors}
+              allHealthySectors={allHealthySectors}
+            />
           ) : plotType === 'scatter' ? (
-            <PlotRenderer data={data} xVar={xVars[0]} yVar={yVars[0]} theme={theme} personFilter={cadetFilter} sectorFilter={sectorFilter} />
+            <PlotRenderer 
+              data={data} 
+              xVar={xVars[0]} 
+              yVar={yVars[0]} 
+              theme={theme} 
+              personFilter={cadetFilter} 
+              sectorFilter={sectorFilter}
+              sessionId={sessionId}
+              meetingEndsSanDiego={meetingEnds}
+              rawData={rawData}
+              allInfectedCadets={allInfectedCadets}
+              allHealthyCadets={allHealthyCadets}
+              allInfectedSectors={allInfectedSectors}
+              allHealthySectors={allHealthySectors}
+            />
+          ) : plotType === 'histogram' ? (
+            <PlotRenderer 
+              data={data} 
+              xVar={xVars[0]} 
+              theme={theme}
+              sessionId={sessionId}
+              personFilter={cadetFilter}
+              sectorFilter={sectorFilter}
+              rawData={rawData}
+              allInfectedCadets={allInfectedCadets}
+              allHealthyCadets={allHealthyCadets}
+              allInfectedSectors={allInfectedSectors}
+              allHealthySectors={allHealthySectors}
+            />
           ) : (
-            <PlotRenderer data={filteredData} theme={theme} />
+            <PlotRenderer 
+              data={filteredData} 
+              xVar={xVars[0]}
+              yVar={yVars[0]}
+              theme={theme}
+              sessionId={sessionId}
+              personFilter={cadetFilter}
+              sectorFilter={sectorFilter}
+              rawData={rawData}
+              allInfectedCadets={allInfectedCadets}
+              allHealthyCadets={allHealthyCadets}
+              allInfectedSectors={allInfectedSectors}
+              allHealthySectors={allHealthySectors}
+            />
           )
         ) : (
           <div style={{
@@ -167,6 +194,7 @@ const PlotComponent = ({ plotLabel, theme, data, logAction, rawData, allInfected
           </div>
         )}
       </div>
+      
       {/* Plot controls always below */}
       <PlotControls
         plotType={plotType}

@@ -176,6 +176,44 @@
   text-align: left;
 }
 
+.filterButtons {
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+  margin-top: 0.3rem;
+  margin-bottom: 0.7rem;
+  width: 100%;
+  flex-basis: 100%;
+}
+
+.filterButton {
+  background: none;
+  color: var(--text-dark);
+  border: 1px solid #bbb;
+  border-radius: 3px;
+  font-size: 0.92rem;
+  padding: 2px 10px;
+  margin: 0;
+  cursor: pointer;
+  box-shadow: none;
+  transition: background 0.15s, border 0.15s;
+}
+
+.filterButton:hover {
+  background: #f3f3f3;
+  border-color: #888;
+}
+
+.filterContainer {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  align-items: flex-start;
+  align-content: flex-start;
+  justify-content: flex-start; /* Ensure left alignment for both filters */
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .variableOptionsContainer {

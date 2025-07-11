@@ -1,7 +1,6 @@
 // usePlotState.js - Custom hook for managing plot component state
 import { useState, useEffect } from 'react';
 import { playerNames, plotConfigs } from './plotConfigs';
-import { initializeVariableFilters, initializeCadetFilter } from './plotUtils';
 
 const sectorIds = ["T1","T2","T3","T4","T5","T6"];
 
@@ -34,7 +33,7 @@ export function usePlotState(plotLabel, logAction, data = []) {
   }, [data]);
 
   // Filter states
-  const [cadetFilter, setCadetFilter] = useState(initializeCadetFilter(playerNames));
+  const [cadetFilter, setCadetFilter] = useState(playerNames.reduce((acc, name) => ({ ...acc, [name]: true }), {}));
   const [sectorFilter, setSectorFilter] = useState(() => {
     const obj = {};
     sectorIds.forEach(id => { obj[id] = true; });
@@ -52,8 +51,8 @@ export function usePlotState(plotLabel, logAction, data = []) {
   // Initialize filters when variables change
   useEffect(() => {
     if (variables) {
-      setXVarFilter(initializeVariableFilters(variables));
-      setYVarFilter(initializeVariableFilters(variables));
+      setXVarFilter(variables);
+      setYVarFilter(variables);
     }
   }, [variables]);
 
