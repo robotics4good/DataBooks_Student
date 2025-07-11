@@ -28,16 +28,6 @@ const LinePlot = (props) => {
   // Always use the selected xVar and yVar for axes
 
   React.useEffect(() => {
-    // Defensive: always recompute on relevant changes
-    if (!meetingEndsSanDiego || !Array.isArray(meetingEndsSanDiego) || meetingEndsSanDiego.length === 0) {
-      setMeetingPoints([]);
-      return;
-    }
-    if (!data || !Array.isArray(data) || data.length === 0) {
-      // Still show x-axis with meeting numbers
-      setMeetingPoints(meetingEndsSanDiego.map((mt, i) => ({ x: i + 1, y: 0 })));
-      return;
-    }
     // Top-level debug log for pipeline audit
     console.log('[LinePlot] useEffect entry:', {
       xVar,

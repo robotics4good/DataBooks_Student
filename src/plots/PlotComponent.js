@@ -43,7 +43,8 @@ const PlotComponent = ({ plotLabel, theme, data, logAction, rawData, allInfected
     const shouldShowMeetingsPlot =
       plotType === 'line' &&
       xVars && yVars &&
-      (xVars[0] === 'Meetings Held' || yVars[0] === 'Meetings Held');
+      ((xVars[0] === 'Meetings Held' && yVars[0] === 'Time') ||
+       (xVars[0] === 'Time' && yVars[0] === 'Meetings Held'));
     if (!shouldShowMeetingsPlot) {
       setSessionId(null);
       return;
