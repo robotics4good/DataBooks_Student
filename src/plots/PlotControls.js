@@ -128,13 +128,13 @@ const PlotControls = ({
 
   // Ensure all available cadet and sector filter options are selected by default
   React.useEffect(() => {
-    if (showCadetFilter && standardizedCadetIds.length > 0) {
+    if (showCadetFilter && filteredCadetIds.length > 0) {
       onSelectAllDevices();
     }
-    if (showSectorFilter && standardizedSectorIds.length > 0) {
+    if (showSectorFilter && filteredSectorIds.length > 0) {
       onSelectAllSectors();
     }
-  }, [showCadetFilter, standardizedCadetIds.join(','), showSectorFilter, standardizedSectorIds.join(',')]);
+  }, [showCadetFilter, filteredCadetIds.join(','), showSectorFilter, filteredSectorIds.join(',')]);
 
   return (
     <div className={styles.controlsContainer}>
@@ -304,20 +304,19 @@ const PlotControls = ({
                   Deselect All
                 </button>
               </div>
-              {standardizedCadetIds.map(name => (
-                <label key={name} className={styles.filterLabel}>
-                  <input
-                    type="checkbox"
-                    checked={personFilter[name] || false}
-                    onChange={() => {
-                      logAction({ type: 'plot_interaction', action: 'person_filter_toggled', details: { plotLabel, person: name, selected: !personFilter[name] } });
-                      onPersonFilterToggle(name);
-                    }}
-                    className={styles.filterCheckbox}
-                  />
-                  {name}
-                </label>
-              ))}
+              <div className={styles.filterCheckboxes}>
+                {filteredCadetIds.map(id => (
+                  <label key={id} className={styles.filterCheckboxLabel}>
+                    <input
+                      type="checkbox"
+                      checked={personFilter[id]}
+                      onChange={() => onPersonFilterToggle(id)}
+                      className={styles.filterCheckbox}
+                    />
+                    {id}
+                  </label>
+                ))}
+              </div>
             </div>
           </>
         )}
@@ -349,20 +348,19 @@ const PlotControls = ({
                   Deselect All
                 </button>
               </div>
-              {standardizedSectorIds.map(name => (
-                <label key={name} className={styles.filterLabel}>
-                  <input
-                    type="checkbox"
-                    checked={sectorFilter[name] || false}
-                    onChange={() => {
-                      logAction({ type: 'plot_interaction', action: 'sector_filter_toggled', details: { plotLabel, sector: name, selected: !sectorFilter[name] } });
-                      onSectorFilterToggle(name);
-                    }}
-                    className={styles.filterCheckbox}
-                  />
-                  {name}
-                </label>
-              ))}
+              <div className={styles.filterCheckboxes}>
+                {filteredSectorIds.map(id => (
+                  <label key={id} className={styles.filterCheckboxLabel}>
+                    <input
+                      type="checkbox"
+                      checked={sectorFilter[id]}
+                      onChange={() => onSectorFilterToggle(id)}
+                      className={styles.filterCheckbox}
+                    />
+                    {id}
+                  </label>
+                ))}
+              </div>
             </div>
           </>
         )}

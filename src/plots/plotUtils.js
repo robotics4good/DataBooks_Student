@@ -21,6 +21,9 @@ export const getVariableValue = (dataPoint, variableName) => {
   }
 };
 
+// Returns an accessor function for a variable name
+export const getVariableAccessor = (variableName) => (dataPoint) => getVariableValue(dataPoint, variableName);
+
 // Data transformation functions
 export const transformData = (data, xVariable, yVariable, transformType = 'none', binCount = 10) => {
   if (!data || data.length === 0) return [];
@@ -167,6 +170,8 @@ export const applyFilters = (data, personFilter, sectorFilter) => {
   if (!data) return [];
   
   return data.filter(point => {
+    // Exclude QR and CR from all filters
+    if (point.device_id === 'QR' || point.device_id === 'CR') return false;
     // Apply person filter if device_id exists
     if (point.device_id && personFilter) {
       const deviceId = point.device_id;
@@ -188,7 +193,8 @@ export const getUniqueValues = (data, variableName) => {
   if (!data || data.length === 0) return [];
   
   const values = data.map(d => getVariableValue(d, variableName));
-  return [...new Set(values)].sort((a, b) => a - b);
+  // Exclude QR and CR from unique values
+  return [...new Set(values)].filter(v => v !== 'QR' && v !== 'CR').sort((a, b) => a - b);
 };
 
 // Calculate statistics for a variable

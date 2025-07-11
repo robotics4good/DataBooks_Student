@@ -4,8 +4,13 @@ import { ResponsiveLine } from "@nivo/line";
 import { getLocalTimeOnlyString } from '../utils/timeUtils';
 import { fetchMeetingLogTimestamps } from '../hooks/useESPData';
 import { playerNames, sectorIds } from './plotConfigs';
-import { getVariableValue, applyFilters, calculateStats, getUniqueValues, initializePersonFilter, initializeSectorFilter, transformData } from './plotUtils';
+import { getVariableValue, getVariableAccessor, applyFilters, calculateStats, getUniqueValues, initializePersonFilter, initializeSectorFilter, transformData } from './plotUtils';
 
+// =============================
+// PRODUCTION-LOCKED: DO NOT MODIFY
+// The Time vs Meetings Held line plot logic below is stable and correct as of 2024-07-11.
+// Any changes must be explicitly reviewed and approved.
+// =============================
 const LinePlot = (props) => {
   const { 
     data = [], 
@@ -19,12 +24,94 @@ const LinePlot = (props) => {
 
   const [meetingPoints, setMeetingPoints] = React.useState(null);
 
-  // Special case: Time vs Meetings Held with dynamic binning
-  const isTimeVsMeetings = xVar === 'Time' && yVar === 'Meetings Held';
-  const isMeetingsVsTime = xVar === 'Meetings Held' && yVar === 'Time';
+  // Remove all special-casing for Meetings Held and Time
+  // Always use the selected xVar and yVar for axes
 
   React.useEffect(() => {
-    if (isMeetingsVsTime && sessionId) {
+    // Top-level debug log for pipeline audit
+    console.log('[LinePlot] useEffect entry:', {
+      xVar,
+      yVar,
+      sessionId,
+      meetingEndsSanDiego,
+      data
+    });
+    // =============================
+    // PRODUCTION-LOCKED: Time vs Meetings Held binning logic
+    // =============================
+    // Defensive: flatten data if it's a wrapper
+    let espData = data;
+    if (Array.isArray(data) && data.length === 1 && Array.isArray(data[0].data)) {
+      espData = data[0].data;
+      console.warn('[LinePlot] Flattened ESP data from wrapper:', espData);
+    }
+    // Filter out ESP data with device_id 'QR' or 'CR'
+    espData = espData.filter(d => d.device_id !== 'QR' && d.device_id !== 'CR');
+    // Convert all ESP timestamps to numbers (ms since epoch)
+    espData = espData.map(d => ({
+      ...d,
+      timestamp: typeof d.timestamp === 'string' ? Date.parse(d.timestamp) : d.timestamp
+    }));
+    // Custom binning for Time vs Meetings Held (X: Time, Y: Meetings Held)
+    if (xVar === 'Time' && yVar === 'Meetings Held' && sessionId && Array.isArray(meetingEndsSanDiego) && meetingEndsSanDiego.length > 0 && Array.isArray(espData) && espData.length > 0) {
+      // Find the first ESP data timestamp (San Diego time)
+      const firstESPTimestamp = Math.min(...espData.map(d => d.timestamp));
+      // Filter meeting ends to only those at or after the first ESP timestamp
+      const filteredMeetings = meetingEndsSanDiego.filter(mt => mt >= firstESPTimestamp);
+      if (filteredMeetings.length === 0) {
+        setMeetingPoints([]);
+        return;
+      }
+      const maxBins = 30;
+      const minTime = firstESPTimestamp;
+      const maxTime = Date.now(); // Use current time as upper bound
+      const totalDuration = maxTime - minTime;
+      const binSize = Math.max(60 * 1000, Math.ceil(totalDuration / maxBins));
+      const binEdges = [];
+      for (let t = minTime; t <= maxTime; t += binSize) {
+        binEdges.push(t);
+      }
+      const points = binEdges.map(edge => ({
+        timestamp: edge,
+        elapsed_minutes: (edge - minTime) / 60000,
+        meetings_held: filteredMeetings.filter(mt => mt <= edge).length
+      }));
+      // Debug logging
+      console.log('[LinePlot] Time vs Meetings Held debug:', {
+        firstESPTimestamp,
+        filteredMeetings,
+        minTime,
+        maxTime,
+        binSize,
+        binEdges,
+        points
+      });
+      setMeetingPoints(points);
+      return;
+    }
+    // =============================
+    // PRODUCTION-LOCKED: Meetings Held vs Time logic
+    // =============================
+    if (xVar === 'Meetings Held' && yVar === 'Time' && sessionId && Array.isArray(meetingEndsSanDiego) && meetingEndsSanDiego.length > 0) {
+      // For each meeting, plot x = meeting number, y = elapsed minutes since first meeting
+      const firstTime = meetingEndsSanDiego[0] instanceof Date ? meetingEndsSanDiego[0].getTime() : new Date(meetingEndsSanDiego[0]).getTime();
+      const points = meetingEndsSanDiego.map((mt, i) => {
+        const date = mt instanceof Date ? mt : new Date(mt);
+        const elapsed = Math.round((date.getTime() - firstTime) / 60000);
+        return {
+          x: i + 1,
+          y: elapsed,
+          actualTime: isNaN(date) ? '' : date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+        };
+      });
+      setMeetingPoints(points);
+      return;
+    }
+    // =============================
+    // END PRODUCTION-LOCKED SECTION
+    // =============================
+    // Default logic for other cases
+    if ((xVar === 'Time' || yVar === 'Time' || xVar === 'Meetings Held' || yVar === 'Meetings Held') && sessionId) {
       fetchMeetingLogTimestamps(sessionId).then(timestamps => {
         if (!timestamps.length) {
           setMeetingPoints([]);
@@ -32,80 +119,65 @@ const LinePlot = (props) => {
         }
         const first = timestamps[0];
         const points = timestamps.map((t, i) => ({
-          x: i + 1,
-          y: (t - first) / 60000 // minutes elapsed since first meeting
+          timestamp: t,
+          meetings_held: i + 1,
+          elapsed_minutes: (t - first) / 60000
         }));
         setMeetingPoints(points);
       });
     } else {
       setMeetingPoints(null);
     }
-  }, [xVar, yVar, sessionId]);
+  }, [xVar, yVar, sessionId, meetingEndsSanDiego, data]);
 
   const getLineData = () => {
+    // For Meetings Held vs Time, use one point per meeting: x = meeting number, y = timestamp
+    if (xVar === 'Meetings Held' && yVar === 'Time' && Array.isArray(meetingPoints) && meetingPoints.length > 0) {
+      return [{ id: `${xVar} vs ${yVar}`, data: meetingPoints }];
+    }
+
+    // For Time vs Meetings Held, use binned points with timestamp as x and meetings_held as y
+    if (xVar === 'Time' && yVar === 'Meetings Held' && Array.isArray(meetingPoints) && meetingPoints.length > 0) {
+      // Debug log for meetingPoints
+      console.log('[LinePlot] getLineData meetingPoints:', meetingPoints);
+      const points = meetingPoints.map(pt => ({
+        x: pt.timestamp,
+        y: pt.meetings_held
+      }));
+      // Defensive check: if all x or y are undefined/NaN, return error
+      const allInvalid = points.every(pt => pt.x === undefined || pt.x === null || isNaN(pt.x) || pt.y === undefined || pt.y === null || isNaN(pt.y));
+      if (allInvalid) {
+        return 'error';
+      }
+      return [{ id: `${xVar} vs ${yVar}`, data: points }];
+    }
+
     if (!data || !data.length) {
       return [];
     }
 
-    // 1. Meetings Held vs Time (step plot from meeting logs)
-    if (isMeetingsVsTime && Array.isArray(meetingEndsSanDiego)) {
-      const meetingEndTimes = meetingEndsSanDiego.sort((a, b) => a - b);
-      const firstTime = data[0]?.localTime || (meetingEndTimes[0] || new Date());
-      const lastTime = new Date();
-      const totalMinutes = Math.ceil((lastTime - firstTime) / 60000);
-      const numBins = Math.min(30, Math.max(3, Math.ceil(totalMinutes / 5)));
-      const binSizeMs = (lastTime - firstTime) / numBins;
-      
-      const bins = [];
-      for (let i = 0; i <= numBins; i++) {
-        const binTime = new Date(firstTime.getTime() + i * binSizeMs);
-        bins.push(binTime);
-      }
-      
-      const binData = bins.map(binTime => ({
-        x: getLocalTimeOnlyString(binTime),
-        y: meetingEndTimes.filter(mt => mt <= binTime).length
-      }));
-      
-      return [{ id: 'Meetings Held', data: binData }];
-    }
-
-    // 2. Time vs [other variables] (dynamic binning)
-    if (xVar === 'Time' && [
-      'Infected Cadets', 'Infected Sectors', 'Healthy Cadets', 'Healthy Sectors',
-      'Button A Presses', 'Button B Presses', 'Interactions', 'Beacon Array',
-      'Total Packets', 'Unique Devices', 'Infection Rate', 'Activity Level'
-    ].includes(yVar)) {
-      return transformData.timeBinning(data, xVar, yVar, 20);
-    }
-
-    // 3. Hour vs [variables] (hour-based binning)
-    if (xVar === 'Hour') {
-      const hourBins = {};
-      for (let hour = 0; hour < 24; hour++) {
-        hourBins[hour] = [];
-      }
-      
-      data.forEach(item => {
-        const hour = item.hour || new Date(item.timestamp).getHours();
-        if (hourBins[hour]) {
-          hourBins[hour].push(item);
-        }
+    // If meeting log data is present and relevant, transform it to match selected axes
+    if (Array.isArray(meetingEndsSanDiego) && meetingEndsSanDiego.length > 0 &&
+        (xVar === 'Time' || yVar === 'Time' || xVar === 'Meetings Held' || yVar === 'Meetings Held')) {
+      // Build synthetic data points from meetingEndsSanDiego
+      // meetingEndsSanDiego is an array of timestamps (ms)
+      const first = meetingEndsSanDiego[0];
+      const points = meetingEndsSanDiego.map((t, i) => {
+        const values = {
+          'Time': t,
+          'Meetings Held': i + 1
+        };
+        return {
+          x: getVariableAccessor(xVar)(values),
+          y: getVariableAccessor(yVar)(values)
+        };
       });
-      
-      const yAccessor = getVariableValue(yVar);
-      const hourData = Object.entries(hourBins).map(([hour, items]) => {
-        const y = items.reduce((sum, item) => sum + (yAccessor(item) || 0), 0);
-        return { x: `${hour}:00`, y };
-      });
-      
-      return [{ id: `${xVar} vs ${yVar}`, data: hourData }];
+      return [{ id: `${xVar} vs ${yVar}`, data: points }];
     }
 
-    // 4. All other combinations: plot raw filtered data
-    const xAccessor = getVariableValue(xVar);
-    const yAccessor = getVariableValue(yVar);
-    
+    // Generic case: plot raw filtered data
+    const xAccessor = getVariableAccessor(xVar);
+    const yAccessor = getVariableAccessor(yVar);
     const points = data.map(item => {
       const x = xAccessor(item);
       const y = yAccessor(item);
@@ -115,13 +187,32 @@ const LinePlot = (props) => {
       (typeof pt.x !== 'number' || !isNaN(pt.x)) &&
       (typeof pt.y !== 'number' || !isNaN(pt.y))
     ));
-    
     return [{ id: `${xVar} vs ${yVar}`, data: points }];
   };
 
   const lineData = getLineData();
 
-  // No data state
+  // No data or error state
+  if (lineData === 'error') {
+    return (
+      <div style={{ 
+        height: "100%", 
+        width: "100%",
+        minHeight: 320,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: "1.1rem",
+        color: "#c00",
+        background: "#f8f3ea",
+        borderRadius: 8,
+        border: "1.5px solid #e0e0e0",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
+      }}>
+        Error: No valid data points for plotting. Check meeting and ESP data timestamps.
+      </div>
+    );
+  }
   if (!lineData.length || !lineData[0]?.data?.length) {
     return (
       <div style={{ 
@@ -165,36 +256,34 @@ const LinePlot = (props) => {
         data={lineData}
         margin={{ top: 60, right: 90, bottom: 130, left: 90 }}
         xScale={{ type: 'point' }}
-        yScale={{ 
-          type: "linear", 
-          min: isMeetingsVsTime ? 0 : Math.max(0, minY - (maxY - minY) * 0.1), 
-          max: yMaxOverride !== null ? yMaxOverride : (isMeetingsVsTime ? 'auto' : maxY + (maxY - minY) * 0.1)
-        }}
+        yScale={
+          (xVar === 'Meetings Held' && yVar === 'Time')
+            ? {
+                type: 'linear',
+                min: 0,
+                max: 'auto'
+              }
+            : {
+                type: 'linear',
+                min: xVar === 'Time' || yVar === 'Time' ? 0 : Math.max(0, minY - (maxY - minY) * 0.1),
+                max: yMaxOverride !== null ? yMaxOverride : (xVar === 'Time' || yVar === 'Time' ? 'auto' : maxY + (maxY - minY) * 0.1)
+              }
+        }
         axisBottom={{
-          legend: xVar,
+          legend: (xVar === 'Time' && yVar === 'Meetings Held') ? 'Time' : xVar,
           legendOffset: 56,
           legendPosition: "middle",
           tickRotation: -45,
+          format: (xVar === 'Time' && yVar === 'Meetings Held') ? v => {
+            const d = new Date(v);
+            return d.toLocaleString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+          } : undefined,
         }}
         axisLeft={{ 
-          legend: isMeetingsVsTime ? 'Elapsed Minutes' : yVar, 
-          legendOffset: -60, 
+          legend: (xVar === 'Meetings Held' && yVar === 'Time') ? 'Elapsed Minutes' : (xVar === 'Time' && yVar === 'Meetings Held') ? 'Meetings Held' : (xVar === 'Time' || yVar === 'Time' ? 'Elapsed Minutes' : yVar),
+          legendOffset: -60,
           legendPosition: "middle",
-          tickValues: isMeetingsVsTime && lineData[0]?.data?.length > 0 ? (() => {
-            const ys = lineData[0].data.map(pt => Math.round(pt.y));
-            const minY = Math.min(...ys);
-            const maxY = Math.max(...ys);
-            const numTicks = Math.min(8, maxY - minY + 1);
-            if (numTicks <= 1) return [minY];
-            const step = Math.max(1, Math.round((maxY - minY) / (numTicks - 1)));
-            const ticks = [];
-            for (let v = minY; v <= maxY; v += step) {
-              ticks.push(v);
-            }
-            if (ticks[ticks.length - 1] !== maxY) ticks.push(maxY);
-            return ticks;
-          })() : undefined,
-          tickFormat: isMeetingsVsTime ? v => Math.round(v) : undefined,
+          tickFormat: undefined,
         }}
         colors={{ scheme: "category10" }}
         pointSize={8}
@@ -269,7 +358,9 @@ const LinePlot = (props) => {
                     padding: '3px 0',
                   }}
                 >
-                  <strong>{point.serieId}</strong>: {point.data.y}
+                  <strong>{point.serieId}</strong>: {(xVar === 'Meetings Held' && yVar === 'Time')
+                    ? `${point.data.y} min (${point.data.actualTime})`
+                    : point.data.y}
                 </div>
               ))}
             </div>

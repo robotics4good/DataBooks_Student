@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { db, ref, get, onValue } from '../firebase';
 import { formatLocalTime, getLocalIsoString, getLocalTimeOnlyString } from '../utils/timeUtils';
-import { playerNames } from '../plots/plotConfigs';
+import { playerNames, sectorIds } from '../plots/plotConfigs';
 import { toZonedTime } from 'date-fns-tz';
 
 const SAN_DIEGO_TZ = 'America/Los_Angeles';
@@ -28,22 +28,44 @@ export function useESPData(enableRealTime = false) {
   const [allInfectedSectors, setAllInfectedSectors] = useState(new Set());
   const [allHealthySectors, setAllHealthySectors] = useState(new Set());
 
-  // Helper to update persistent sets
+  // Map to track latest status by device_id
+  const latestStatusByDeviceRef = useRef({});
+
+  // Helper to update persistent sets using latest status only
   const updateStatusSets = (data) => {
+    const latestStatusByDevice = {};
+    // Find the latest record for each device_id
+    (data || []).forEach(d => {
+      const dev = d.device_id;
+      if (!dev) return;
+      // Always keep the latest (by timestamp)
+      if (!latestStatusByDevice[dev] || d.timestamp > latestStatusByDevice[dev].timestamp) {
+        latestStatusByDevice[dev] = d;
+      }
+    });
+    // Save to ref for access elsewhere
+    latestStatusByDeviceRef.current = latestStatusByDevice;
+
+    // Build sets from latest status only, strictly matching playerNames/sectorIds
     const infectedCadets = new Set();
     const healthyCadets = new Set();
     const infectedSectors = new Set();
     const healthySectors = new Set();
-    (data || []).forEach(d => {
-      const isCadet = playerNames.includes(d.device_id);
-      if (isCadet) {
-        if (d.infected_cadets) infectedCadets.add(d.device_id);
-        if (d.healthy_cadets) healthyCadets.add(d.device_id);
-      } else {
-        // Sector logic: use infection_status
-        if (d.infection_status === 1) infectedSectors.add(d.device_id);
-        if (d.infection_status === 0) healthySectors.add(d.device_id);
+    Object.entries(latestStatusByDevice).forEach(([dev, d]) => {
+      if (playerNames.includes(dev)) {
+        if (d.infection_status === 1) {
+          infectedCadets.add(dev);
+        } else if (d.infection_status === 0) {
+          healthyCadets.add(dev);
+        }
+      } else if (sectorIds.includes(dev)) {
+        if (d.infection_status === 1) {
+          infectedSectors.add(dev);
+        } else if (d.infection_status === 0 || d.infection_status === 0.5) {
+          healthySectors.add(dev);
+        }
       }
+      // Ignore any device_id not in playerNames or sectorIds
     });
     setAllInfectedCadets(infectedCadets);
     setAllHealthyCadets(healthyCadets);
@@ -170,6 +192,7 @@ export function useESPData(enableRealTime = false) {
     let sessionId = null;
     let isMounted = true;
     let lastSessionId = null;
+    let pollingInterval = null; // <-- add polling interval
     // No need for espDataCallback, use unsubscribe from onValue
 
     // Helper to process and update ESP data
@@ -182,13 +205,15 @@ export function useESPData(enableRealTime = false) {
         }
         // Remove all proximity_mask/proximity_count logic
         // Always parse ESP timestamp as UTC, then convert to San Diego time
-        const transformedData = Object.keys(data).map(key => {
-          const record = { id: key, ...data[key] };
-          // Parse timestamp as UTC, then convert to San Diego time
-          let localDate = toSanDiegoDate(record.timestamp);
-          record.localTime = localDate;
-          return record;
-        });
+        const transformedData = Object.keys(data)
+          .map(key => {
+            const record = { id: key, ...data[key] };
+            // Parse timestamp as UTC, then convert to San Diego time
+            let localDate = toSanDiegoDate(record.timestamp);
+            record.localTime = localDate;
+            return record;
+          })
+          .filter(record => record.device_id !== 'QR' && record.device_id !== 'CR');
         // Sort by ESP San Diego time
         transformedData.sort((a, b) => (a.localTime - b.localTime));
         // Deduplicate: remove consecutive records for the same device_id with identical fields (except timestamp)
@@ -283,6 +308,17 @@ export function useESPData(enableRealTime = false) {
           const data = snapshot.val();
           processESPData(data);
         });
+        // Set up polling every 60 seconds to fetch ESP data and update status sets
+        pollingInterval = setInterval(async () => {
+          try {
+            const espDataRef = ref(db, 'readings');
+            const snapshot = await get(espDataRef);
+            const data = snapshot.val();
+            processESPData(data);
+          } catch (err) {
+            // Ignore polling errors
+          }
+        }, 60000);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -296,6 +332,7 @@ export function useESPData(enableRealTime = false) {
       isMounted = false;
       if (unsubscribe) unsubscribe();
       if (meetingInterval) clearInterval(meetingInterval);
+      if (pollingInterval) clearInterval(pollingInterval); // <-- clear polling interval
     };
   }, []);
 

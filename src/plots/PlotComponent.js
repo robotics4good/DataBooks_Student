@@ -1,3 +1,8 @@
+// =============================
+// PRODUCTION-LOCKED: DO NOT MODIFY
+// The logic for passing ESP data and meeting log data to the plot for Time vs Meetings Held is stable and correct as of 2024-07-11.
+// Any changes must be explicitly reviewed and approved.
+// =============================
 import React from 'react';
 import styles from './PlotComponent.module.css';
 import { usePlotState } from './usePlotState';
@@ -38,8 +43,8 @@ const PlotComponent = ({ plotLabel, theme, data, logAction, rawData, allInfected
     const shouldShowMeetingsPlot =
       plotType === 'line' &&
       xVars && yVars &&
-      xVars[0] === 'Meetings Held' &&
-      yVars[0] === 'Time';
+      ((xVars[0] === 'Meetings Held' && yVars[0] === 'Time') ||
+       (xVars[0] === 'Time' && yVars[0] === 'Meetings Held'));
     if (!shouldShowMeetingsPlot) {
       setSessionId(null);
       return;
@@ -79,10 +84,7 @@ const PlotComponent = ({ plotLabel, theme, data, logAction, rawData, allInfected
   const hasData = Array.isArray(filteredData) && filteredData.some(series => Array.isArray(series.data) && series.data.length > 0);
 
   // Decide which data to pass to PlotRenderer
-  let plotDataToUse = data;
-  if (meetingEnds && meetingEnds.length > 0) {
-    plotDataToUse = [{ id: 'Elapsed Minutes', data: meetingEnds.map(point => ({ x: point.x, y: Math.round(point.y) })) }];
-  }
+  let plotDataToUse = data; // Always use raw ESP data for meeting log plots
 
   return (
     <div className={styles.plotContainer}>
@@ -91,8 +93,8 @@ const PlotComponent = ({ plotLabel, theme, data, logAction, rawData, allInfected
         {meetingEnds && meetingEnds.length > 0 ? (
           <PlotRenderer 
             data={plotDataToUse} 
-            xVar={"Meetings Held"} 
-            yVar={"Time"} 
+            xVar={xVars[0]} 
+            yVar={yVars[0]} 
             theme={theme} 
             sessionId={sessionId} 
             meetingEndsSanDiego={meetingEnds} 

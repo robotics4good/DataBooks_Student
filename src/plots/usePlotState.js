@@ -20,7 +20,8 @@ export function usePlotState(plotLabel, logAction, data = []) {
   const [cadetSectorFilter, setCadetSectorFilter] = useState({});
 
   useEffect(() => {
-    const ids = Array.from(new Set((data || []).map(d => d.device_id))).sort();
+    // Exclude QR and CR from dynamic filter options
+    const ids = Array.from(new Set((data || []).map(d => d.device_id))).filter(id => id !== 'QR' && id !== 'CR').sort();
     setCadetSectorFilter(prev => {
       // Only update if the set of IDs has changed
       const prevIds = Object.keys(prev).sort();
@@ -33,10 +34,13 @@ export function usePlotState(plotLabel, logAction, data = []) {
   }, [data]);
 
   // Filter states
-  const [cadetFilter, setCadetFilter] = useState(playerNames.reduce((acc, name) => ({ ...acc, [name]: true }), {}));
+  // Exclude QR and CR from filter options
+  const filteredPlayerNames = playerNames.filter(name => name !== 'QR' && name !== 'CR');
+  const filteredSectorIds = sectorIds.filter(id => id !== 'QR' && id !== 'CR');
+  const [cadetFilter, setCadetFilter] = useState(filteredPlayerNames.reduce((acc, name) => ({ ...acc, [name]: true }), {}));
   const [sectorFilter, setSectorFilter] = useState(() => {
     const obj = {};
-    sectorIds.forEach(id => { obj[id] = true; });
+    filteredSectorIds.forEach(id => { obj[id] = true; });
     return obj;
   });
   const [xVarFilter, setXVarFilter] = useState({});
