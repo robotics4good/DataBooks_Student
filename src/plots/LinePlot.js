@@ -28,6 +28,16 @@ const LinePlot = (props) => {
   // Always use the selected xVar and yVar for axes
 
   React.useEffect(() => {
+    // Defensive: always recompute on relevant changes
+    if (!meetingEndsSanDiego || !Array.isArray(meetingEndsSanDiego) || meetingEndsSanDiego.length === 0) {
+      setMeetingPoints([]);
+      return;
+    }
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      // Still show x-axis with meeting numbers
+      setMeetingPoints(meetingEndsSanDiego.map((mt, i) => ({ x: i + 1, y: 0 })));
+      return;
+    }
     // Top-level debug log for pipeline audit
     console.log('[LinePlot] useEffect entry:', {
       xVar,
@@ -107,11 +117,11 @@ const LinePlot = (props) => {
       setMeetingPoints(lineData);
       return;
     }
-    // =============================
+    // Normalize meetingEndsSanDiego to ms since epoch for all Meetings Held vs X plots
+    const meetingEndsMs = Array.isArray(meetingEndsSanDiego) ? meetingEndsSanDiego.map(mt => mt instanceof Date ? mt.getTime() : new Date(mt).getTime()) : [];
+
     // PRODUCTION-LOCKED: Meetings Held vs Time logic
-    // =============================
-    if (xVar === 'Meetings Held' && yVar === 'Time' && sessionId && Array.isArray(meetingEndsSanDiego) && meetingEndsSanDiego.length > 0) {
-      // For each meeting, plot x = meeting number, y = elapsed minutes since first meeting
+    if (xVar === 'Meetings Held' && yVar === 'Time' && sessionId && meetingEndsSanDiego.length > 0) {
       const firstTime = meetingEndsSanDiego[0] instanceof Date ? meetingEndsSanDiego[0].getTime() : new Date(meetingEndsSanDiego[0]).getTime();
       const points = meetingEndsSanDiego.map((mt, i) => {
         const date = mt instanceof Date ? mt : new Date(mt);
@@ -122,6 +132,30 @@ const LinePlot = (props) => {
           actualTime: isNaN(date) ? '' : date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
         };
       });
+      setMeetingPoints(points);
+      return;
+    }
+    // Meetings Held vs Infected Cadets
+    if (xVar === 'Meetings Held' && yVar === 'Infected Cadets' && sessionId && meetingEndsSanDiego.length > 0 && Array.isArray(espData) && espData.length > 0) {
+      const points = getStepStatusAtMeetings(espData, meetingEndsSanDiego, 'cadet', 'infected');
+      setMeetingPoints(points);
+      return;
+    }
+    // Meetings Held vs Healthy Cadets
+    if (xVar === 'Meetings Held' && yVar === 'Healthy Cadets' && sessionId && meetingEndsSanDiego.length > 0 && Array.isArray(espData) && espData.length > 0) {
+      const points = getStepStatusAtMeetings(espData, meetingEndsSanDiego, 'cadet', 'healthy');
+      setMeetingPoints(points);
+      return;
+    }
+    // Meetings Held vs Infected Sectors
+    if (xVar === 'Meetings Held' && yVar === 'Infected Sectors' && sessionId && meetingEndsSanDiego.length > 0 && Array.isArray(espData) && espData.length > 0) {
+      const points = getStepStatusAtMeetings(espData, meetingEndsSanDiego, 'sector', 'infected');
+      setMeetingPoints(points);
+      return;
+    }
+    // Meetings Held vs Healthy Sectors
+    if (xVar === 'Meetings Held' && yVar === 'Healthy Sectors' && sessionId && meetingEndsSanDiego.length > 0 && Array.isArray(espData) && espData.length > 0) {
+      const points = getStepStatusAtMeetings(espData, meetingEndsSanDiego, 'sector', 'healthy');
       setMeetingPoints(points);
       return;
     }
@@ -364,6 +398,20 @@ const LinePlot = (props) => {
       return [{ id: `${xVar} vs ${yVar}`, data: meetingPoints }];
     }
 
+    // For the four new Meetings Held vs device status plots, use binned meetingPoints
+    if (
+      xVar === 'Meetings Held' &&
+      [
+        'Infected Cadets',
+        'Healthy Cadets',
+        'Infected Sectors',
+        'Healthy Sectors'
+      ].includes(yVar) &&
+      Array.isArray(meetingPoints) && meetingPoints.length > 0
+    ) {
+      return [{ id: `${xVar} vs ${yVar}`, data: meetingPoints }];
+    }
+
     if (!data || !data.length) {
       return [];
     }
@@ -486,16 +534,13 @@ const LinePlot = (props) => {
           legendOffset: 56,
           legendPosition: "middle",
           tickRotation: -45,
-          format: (xVar === 'Time') ? v => {
-            const d = new Date(v);
-            return d.toLocaleString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-          } : undefined,
+          format: (xVar === 'Time') ? v => safeString(new Date(v)) : v => safeString(v),
         }}
         axisLeft={{ 
           legend: (xVar === 'Meetings Held' && yVar === 'Time') ? 'Elapsed Minutes' : (xVar === 'Time' && yVar === 'Meetings Held') ? 'Meetings Held' : (xVar === 'Time' || yVar === 'Time' ? 'Elapsed Minutes' : yVar),
           legendOffset: -60,
           legendPosition: "middle",
-          tickFormat: undefined,
+          tickFormat: v => safeString(v),
         }}
         colors={{ scheme: "category10" }}
         pointSize={8}
@@ -570,9 +615,9 @@ const LinePlot = (props) => {
                     padding: '3px 0',
                   }}
                 >
-                  <strong>{point.serieId}</strong>: {(xVar === 'Meetings Held' && yVar === 'Time')
-                    ? `${point.data.y} min (${point.data.actualTime})`
-                    : point.data.y}
+                  <strong>{safeString(point.serieId)}</strong>: {(xVar === 'Meetings Held' && yVar === 'Time')
+                    ? `${safeString(point.data.y)} min (${safeString(point.data.actualTime)})`
+                    : safeString(point.data.y)}
                 </div>
               ))}
             </div>
@@ -657,4 +702,141 @@ function getTimeVsStatusCount(data, maxBins, type, status) {
   });
   console.log('[LinePlot] getTimeVsStatusCount END', result);
   return result;
+}
+
+// Helper: status snapshot at each meeting end
+function getStatusSnapshotAtMeetings(data, meetingEnds, type, status) {
+  if (!data || data.length === 0 || !meetingEnds || meetingEnds.length === 0) return [];
+  const isCadet = id => /^S\d+$/.test(id);
+  const isSector = id => /^T\d+$/.test(id);
+  const filterFn = type === 'cadet' ? isCadet : isSector;
+  // Sort data by timestamp ascending
+  const sorted = [...data].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  // For each meeting, build status snapshot
+  return meetingEnds.map((mt, i) => {
+    const meetingTime = mt instanceof Date ? mt.getTime() : new Date(mt).getTime();
+    // For each device, find the latest record at or before this meeting
+    const latestById = {};
+    for (const rec of sorted) {
+      if (!filterFn(rec.device_id)) continue;
+      if (rec.timestamp <= meetingTime) {
+        if (!latestById[rec.device_id] || rec.timestamp > latestById[rec.device_id].timestamp) {
+          latestById[rec.device_id] = rec;
+        }
+      }
+    }
+    let count = 0;
+    for (const rec of Object.values(latestById)) {
+      if (status === 'infected' && rec.infection_status === 1) count++;
+      if (status === 'healthy' && (rec.infection_status === 0 || rec.infection_status === 0.5)) count++;
+    }
+    return { x: i + 1, y: count };
+  });
+}
+
+// Helper: status as of exact bin edge (no carry-forward)
+function getStatusAtEachBin(data, binEdges, type, status) {
+  if (!data || data.length === 0 || !binEdges || binEdges.length === 0) return [];
+  const isCadet = id => /^S\d+$/.test(id);
+  const isSector = id => /^T\d+$/.test(id);
+  const filterFn = type === 'cadet' ? isCadet : isSector;
+  // Sort data by timestamp ascending
+  const sorted = [...data].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  return binEdges.map((edge, i) => {
+    // For each device, find the latest record at or before this meeting
+    const latestById = {};
+    for (const rec of sorted) {
+      if (!filterFn(rec.device_id)) continue;
+      if (rec.timestamp <= edge) {
+        if (!latestById[rec.device_id] || rec.timestamp > latestById[rec.device_id].timestamp) {
+          latestById[rec.device_id] = rec;
+        }
+      }
+    }
+    let count = 0;
+    for (const rec of Object.values(latestById)) {
+      if (status === 'infected' && rec.infection_status === 1) count++;
+      if (status === 'healthy' && (rec.infection_status === 0 || rec.infection_status === 0.5)) count++;
+    }
+    return { x: i + 1, y: count };
+  });
+}
+
+// Helper: carry forward status by bin edges (timestamps)
+function getStatusByBins(data, binEdges, type, status) {
+  if (!data || data.length === 0 || !binEdges || binEdges.length === 0) return [];
+  const isCadet = id => /^S\d+$/.test(id);
+  const isSector = id => /^T\d+$/.test(id);
+  const filterFn = type === 'cadet' ? isCadet : isSector;
+  // Sort data by timestamp ascending
+  const sorted = [...data].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  // For each bin, carry forward status
+  let prevStatusById = {};
+  return binEdges.map((edge, i) => {
+    for (const rec of sorted) {
+      if (!filterFn(rec.device_id)) continue;
+      if (rec.timestamp <= edge) {
+        prevStatusById[rec.device_id] = rec.infection_status;
+      }
+    }
+    let count = 0;
+    for (const inf of Object.values(prevStatusById)) {
+      if (status === 'infected' && inf === 1) count++;
+      if (status === 'healthy' && (inf === 0 || inf === 0.5)) count++;
+    }
+    return { x: i + 1, y: count };
+  });
+}
+
+// Helper: step status at each meeting (use last known status, even before first meeting)
+function getStepStatusAtMeetings(data, meetingEnds, type, status) {
+  if (!data || data.length === 0 || !meetingEnds || meetingEnds.length === 0) return [];
+  const isCadet = id => typeof id === 'string' && id.startsWith('S');
+  const isSector = id => typeof id === 'string' && id.startsWith('T');
+  const filterFn = type === 'cadet' ? isCadet : isSector;
+  // Group ESP records by device
+  const byDevice = {};
+  for (const rec of data) {
+    if (!filterFn(rec.device_id)) continue;
+    if (!byDevice[rec.device_id]) byDevice[rec.device_id] = [];
+    byDevice[rec.device_id].push(rec);
+  }
+  // Sort each device's records by timestamp ascending
+  for (const id in byDevice) {
+    byDevice[id].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  }
+  // For each meeting, for each device, use the latest record at or before that meeting
+  const points = meetingEnds.map((mt, i) => {
+    const meetingTime = mt instanceof Date ? mt.getTime() : new Date(mt).getTime();
+    let count = 0;
+    for (const id in byDevice) {
+      const records = byDevice[id];
+      // Find the latest record at or before this meeting
+      let latest = null;
+      for (const rec of records) {
+        if (rec.timestamp <= meetingTime) {
+          if (!latest || rec.timestamp > latest.timestamp) {
+            latest = rec;
+          }
+        }
+      }
+      if (latest) {
+        if (status === 'infected' && latest.infection_status === 1) count++;
+        if (status === 'healthy' && (latest.infection_status === 0 || latest.infection_status === 0.5)) count++;
+      }
+    }
+    return { x: i + 1, y: count };
+  });
+  // Fallback: if no points, create dummy points for x-axis
+  if (!points.length) {
+    return meetingEnds.map((mt, i) => ({ x: i + 1, y: 0 }));
+  }
+  return points;
+}
+
+// Utility: Safely stringify any value for React rendering
+function safeString(val) {
+  if (val instanceof Date) return val.toLocaleString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+  if (typeof val === 'object' && val !== null) return JSON.stringify(val);
+  return val !== undefined && val !== null ? String(val) : '';
 }
