@@ -149,6 +149,135 @@ const LinePlot = (props) => {
       setMeetingPoints(points);
       return;
     }
+    // LATERAL CODE: Meetings Held vs Infected Cadets
+    if (xVar === 'Meetings Held' && yVar === 'Infected Cadets' && sessionId && meetingEndsSanDiego.length > 0 && Array.isArray(espData) && espData.length > 0) {
+      // For each meeting, for each cadet, use the latest ESP record at or before that meeting
+      const isCadet = id => typeof id === 'string' && id.startsWith('S');
+      const byCadet = {};
+      for (const rec of espData) {
+        if (!isCadet(rec.device_id)) continue;
+        if (!byCadet[rec.device_id]) byCadet[rec.device_id] = [];
+        byCadet[rec.device_id].push(rec);
+      }
+      for (const id in byCadet) {
+        byCadet[id].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      }
+      const points = meetingEndsSanDiego.map((mt, i) => {
+        const meetingTime = mt instanceof Date ? mt.getTime() : new Date(mt).getTime();
+        let count = 0;
+        for (const id in byCadet) {
+          const records = byCadet[id];
+          let latest = null;
+          for (const rec of records) {
+            if (rec.timestamp <= meetingTime) {
+              if (!latest || rec.timestamp > latest.timestamp) {
+                latest = rec;
+              }
+            }
+          }
+          if (latest && latest.infection_status === 1) count++;
+        }
+        return { x: i + 1, y: count };
+      });
+      setMeetingPoints(points);
+      return;
+    }
+    // LATERAL CODE: Meetings Held vs Healthy Cadets
+    if (xVar === 'Meetings Held' && yVar === 'Healthy Cadets' && sessionId && meetingEndsSanDiego.length > 0 && Array.isArray(espData) && espData.length > 0) {
+      const isCadet = id => typeof id === 'string' && id.startsWith('S');
+      const byCadet = {};
+      for (const rec of espData) {
+        if (!isCadet(rec.device_id)) continue;
+        if (!byCadet[rec.device_id]) byCadet[rec.device_id] = [];
+        byCadet[rec.device_id].push(rec);
+      }
+      for (const id in byCadet) {
+        byCadet[id].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      }
+      const points = meetingEndsSanDiego.map((mt, i) => {
+        const meetingTime = mt instanceof Date ? mt.getTime() : new Date(mt).getTime();
+        let count = 0;
+        for (const id in byCadet) {
+          const records = byCadet[id];
+          let latest = null;
+          for (const rec of records) {
+            if (rec.timestamp <= meetingTime) {
+              if (!latest || rec.timestamp > latest.timestamp) {
+                latest = rec;
+              }
+            }
+          }
+          if (latest && (latest.infection_status === 0 || latest.infection_status === 0.5)) count++;
+        }
+        return { x: i + 1, y: count };
+      });
+      setMeetingPoints(points);
+      return;
+    }
+    // LATERAL CODE: Meetings Held vs Infected Sectors
+    if (xVar === 'Meetings Held' && yVar === 'Infected Sectors' && sessionId && meetingEndsSanDiego.length > 0 && Array.isArray(espData) && espData.length > 0) {
+      const isSector = id => typeof id === 'string' && id.startsWith('T');
+      const bySector = {};
+      for (const rec of espData) {
+        if (!isSector(rec.device_id)) continue;
+        if (!bySector[rec.device_id]) bySector[rec.device_id] = [];
+        bySector[rec.device_id].push(rec);
+      }
+      for (const id in bySector) {
+        bySector[id].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      }
+      const points = meetingEndsSanDiego.map((mt, i) => {
+        const meetingTime = mt instanceof Date ? mt.getTime() : new Date(mt).getTime();
+        let count = 0;
+        for (const id in bySector) {
+          const records = bySector[id];
+          let latest = null;
+          for (const rec of records) {
+            if (rec.timestamp <= meetingTime) {
+              if (!latest || rec.timestamp > latest.timestamp) {
+                latest = rec;
+              }
+            }
+          }
+          if (latest && latest.infection_status === 1) count++;
+        }
+        return { x: i + 1, y: count };
+      });
+      setMeetingPoints(points);
+      return;
+    }
+    // LATERAL CODE: Meetings Held vs Healthy Sectors
+    if (xVar === 'Meetings Held' && yVar === 'Healthy Sectors' && sessionId && meetingEndsSanDiego.length > 0 && Array.isArray(espData) && espData.length > 0) {
+      const isSector = id => typeof id === 'string' && id.startsWith('T');
+      const bySector = {};
+      for (const rec of espData) {
+        if (!isSector(rec.device_id)) continue;
+        if (!bySector[rec.device_id]) bySector[rec.device_id] = [];
+        bySector[rec.device_id].push(rec);
+      }
+      for (const id in bySector) {
+        bySector[id].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      }
+      const points = meetingEndsSanDiego.map((mt, i) => {
+        const meetingTime = mt instanceof Date ? mt.getTime() : new Date(mt).getTime();
+        let count = 0;
+        for (const id in bySector) {
+          const records = bySector[id];
+          let latest = null;
+          for (const rec of records) {
+            if (rec.timestamp <= meetingTime) {
+              if (!latest || rec.timestamp > latest.timestamp) {
+                latest = rec;
+              }
+            }
+          }
+          if (latest && (latest.infection_status === 0 || latest.infection_status === 0.5)) count++;
+        }
+        return { x: i + 1, y: count };
+      });
+      setMeetingPoints(points);
+      return;
+    }
     // =============================
     // PRODUCTION-LOCKED: Time vs Infected Cadets (STABLE, DO NOT MODIFY)
     // The logic for binning and plotting Time vs Infected Cadets is stable and correct as of 2024-07-11.
@@ -520,14 +649,14 @@ const LinePlot = (props) => {
               }
         }
         axisBottom={{
-          legend: (xVar === 'Time' && yVar === 'Meetings Held') ? 'Time' : xVar,
+          legend: xVar,
           legendOffset: 56,
           legendPosition: "middle",
           tickRotation: -45,
           format: (xVar === 'Time') ? v => safeString(new Date(v)) : v => safeString(v),
         }}
         axisLeft={{ 
-          legend: (xVar === 'Meetings Held' && yVar === 'Time') ? 'Elapsed Minutes' : (xVar === 'Time' && yVar === 'Meetings Held') ? 'Meetings Held' : (xVar === 'Time' || yVar === 'Time' ? 'Elapsed Minutes' : yVar),
+          legend: (xVar === 'Meetings Held' && yVar === 'Time') ? 'Elapsed Minutes' : yVar,
           legendOffset: -60,
           legendPosition: "middle",
           tickFormat: v => safeString(v),
