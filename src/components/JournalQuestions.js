@@ -14,21 +14,22 @@ export const JOURNAL_QUESTIONS = [
   "Write down the codename of your partner cadet for this task.",
   "Given that you know that on this ship there is a sector that is infected, do you suspect that you or your partner cadet have become infected after this round?",
   "On the top right there is an option to \"Go Dual Screen\" or \"Go Single Screen.\" How does the view change when you \"Go Dual Screen\"?",
-  "Set your view to Dual Screen where the Journal and plot are side-by-side. Now, let's explore the data plots tab above. Click the \"Plot Options\" dropdown menu, how many types of data plots do you see?",
-  "In the data plots section, notice how there are many variables that you can choose from. As our first plot, let's focus on analyzing one specific variable. Using the dropdown menu, pick either a histogram or a pie plot and click the box for \"Infected Cadets.\" From the plot, report how many cadets are infected.",
-  "Great! What information did the plot you chose provide that helped you to answer the previous question?",
+  // Removed Q8, Q9, Q10
   // ROUND 2
   "Report the letter of the sector (A, B, etc) you visited in this round.",
   "Write down the codename of your partner cadet for this task.",
   "Did you work with the same cadet as in Round 1? If so, why?",
   "Now that you have participated in 2 Rounds of tasks on the S.S. Astra, we urge you to start thinking about how the infection is spreading. As we are still collectively trying to fight these infections, we need your help! Without changing the rules of the game, what do you suggest the cadets should do to lessen the spread?",
-  "Head back to the data plots tab. This time, let's compare two different variables using one of the scatter, line, or bar plot options from the dropdown menu. For the 'x' axis, let's click \"Time,\" and for the 'y' axis, let's click \"Infected Cadets.\" With this plot, would you say that the number of infected cadets has increased over time?",
-  "What makes the scatter, line, or bar plots helpful in answering the previous question? Hint: How many variables did you click for your plot in Round 1 as compared to Round 2?",
+  // Q15: Only line plot
+  "Head back to the data plots tab. This time, let's compare two different variables using a line plot from the dropdown menu. For the 'x' axis, let's click \"Time,\" and for the 'y' axis, let's click \"Infected Cadets.\" With this plot, would you say that the number of infected cadets has increased over time?",
+  // Q16: Only line plot
+  "What makes the line plot helpful in answering the previous question? Hint: How many variables did you click for your plot in Round 1 as compared to Round 2?",
   // ROUND 3
   "Earlier in Journal 2, we asked if you stayed with the same partner for your Round 1 and 2 tasks. Did you pick a new partner (different from Round 1 AND Round 2) for this task? Do you think that changing partners might increase the chance of you getting infected? In a few words, explain your reasoning.",
-  "Now, head back to the data plots tab. Similar to Round 2, we will be examining two variables at one time. You will use a line, scatter, or bar plot for this question (the choice is yours!). This time, let's keep our 'x' axis as \"Time\" but change our 'y' axis to \"Infected Sectors.\" Examine how the number of infected sectors has changed over time. Write down your observations from this plot.",
+  // Round 3: Only line plot
+  "Now, head back to the data plots tab. For this question, use a line plot. Keep your 'x' axis as \"Time\" and change your 'y' axis to \"Infected Sectors.\" Examine how the number of infected sectors has changed over time. Write down your observations from this plot.",
   "Lastly, change the 'x' variable to 'Meetings Held.' Once again, write down your observations for this plot.",
-  "Between the two plots you looked at for Questions 18 and 19 explain what similarities you notice between the results of the plots.",
+  "Between the two plots you looked at for the previous two questions, explain what similarities you notice between the results of the plots.",
   "What type of plot do you think is most useful for trying to solve the problem of limiting infection spread throughout the S.S. Astra?"
 ];
 
@@ -131,24 +132,24 @@ const ROUND_QUESTIONS = [
     "During this round you completed a task with a partner cadet, what task did you complete as a team?",
     "Write down the codename of your partner cadet for this task.",
     "Given that you know that on this ship there is a sector that is infected, do you suspect that you or your partner cadet have become infected after this round?",
-    "On the top right there is an option to \"Go Dual Screen\" or \"Go Single Screen.\" How does the view change when you \"Go Dual Screen\"?",
-    "Set your view to Dual Screen where the Journal and plot are side-by-side. Now, let's explore the data plots tab above. Click the \"Plot Options\" dropdown menu, how many types of data plots do you see?",
-    "In the data plots section, notice how there are many variables that you can choose from. As our first plot, let's focus on analyzing one specific variable. Using the dropdown menu, pick either a histogram or a pie plot and click the box for \"Infected Cadets.\" From the plot, report how many cadets are infected.",
-    "Great! What information did the plot you chose provide that helped you to answer the previous question?"
+    "On the top right there is an option to \"Go Dual Screen\" or \"Go Single Screen.\" How does the view change when you \"Go Dual Screen\"?"
   ],
   [ // Round 2
     "Report the letter of the sector (A, B, etc) you visited in this round.",
     "Write down the codename of your partner cadet for this task.",
     "Did you work with the same cadet as in Round 1? If so, why?",
     "Now that you have participated in 2 Rounds of tasks on the S.S. Astra, we urge you to start thinking about how the infection is spreading. As we are still collectively trying to fight these infections, we need your help! Without changing the rules of the game, what do you suggest the cadets should do to lessen the spread?",
-    "Head back to the data plots tab. This time, let's compare two different variables using one of the scatter, line, or bar plot options from the dropdown menu. For the 'x' axis, let's click \"Time,\" and for the 'y' axis, let's click \"Infected Cadets.\" With this plot, would you say that the number of infected cadets has increased over time?",
-    "What makes the scatter, line, or bar plots helpful in answering the previous question? Hint: How many variables did you click for your plot in Round 1 as compared to Round 2?"
+    // Q15: Only line plot
+    "Head back to the data plots tab. This time, let's compare two different variables using a line plot from the dropdown menu. For the 'x' axis, let's click \"Time,\" and for the 'y' axis, let's click \"Infected Cadets.\" With this plot, would you say that the number of infected cadets has increased over time?",
+    // Q16: Only line plot
+    "What makes the line plot helpful in answering the previous question? Hint: How many variables did you click for your plot in Round 1 as compared to Round 2?"
   ],
   [ // Round 3
     "Earlier in Journal 2, we asked if you stayed with the same partner for your Round 1 and 2 tasks. Did you pick a new partner (different from Round 1 AND Round 2) for this task? Do you think that changing partners might increase the chance of you getting infected? In a few words, explain your reasoning.",
-    "Now, head back to the data plots tab. Similar to Round 2, we will be examining two variables at one time. You will use a line, scatter, or bar plot for this question (the choice is yours!). This time, let's keep our 'x' axis as \"Time\" but change our 'y' axis to \"Infected Sectors.\" Examine how the number of infected sectors has changed over time. Write down your observations from this plot.",
+    // Round 3: Only line plot
+    "Now, head back to the data plots tab. For this question, use a line plot. Keep your 'x' axis as \"Time\" and change your 'y' axis to \"Infected Sectors.\" Examine how the number of infected sectors has changed over time. Write down your observations from this plot.",
     "Lastly, change the 'x' variable to 'Meetings Held.' Once again, write down your observations for this plot.",
-    "Between the two plots you looked at for Questions 18 and 19 explain what similarities you notice between the results of the plots.",
+    "Between the two plots you looked at for the previous two questions, explain what similarities you notice between the results of the plots.",
     "What type of plot do you think is most useful for trying to solve the problem of limiting infection spread throughout the S.S. Astra?"
   ]
 ];
