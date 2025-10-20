@@ -4,6 +4,7 @@ import { db, ref, set, get } from "../firebase";
 import { logAction } from "../services/userActionLogger";
 import { getLocalIsoString } from '../utils/timeUtils';
 
+/*
 // Journal questions configuration
 export const JOURNAL_QUESTIONS = [
   // ROUND 1
@@ -32,8 +33,9 @@ export const JOURNAL_QUESTIONS = [
   "Between the two plots you looked at for the previous two questions, explain what similarities you notice between the results of the plots.",
   "What type of plot do you think is most useful for trying to solve the problem of limiting infection spread throughout the S.S. Astra?"
 ];
+*/
 
-// Auto-resizing textarea component
+// Auto-resizing textarea component: reusable textarea component that auto-expands vertically based on content.
 const AutoResizingTextarea = ({ value, onChange, onBlur, ...props }) => {
   const textareaRef = useRef(null);
 
@@ -47,7 +49,7 @@ const AutoResizingTextarea = ({ value, onChange, onBlur, ...props }) => {
   return <textarea ref={textareaRef} value={value} onChange={onChange} onBlur={onBlur} {...props} />;
 };
 
-// Question box component
+// Question box component: renders a single question and its associated auto-resizing textarea.
 export const QuestionBox = ({ question, index, logAction: _logAction, styles = {}, journalNumber }) => {
   const { journalAnswers, setJournalAnswer } = useJournal();
   const answer = journalAnswers[index] || "";
@@ -118,12 +120,13 @@ export const QuestionBox = ({ question, index, logAction: _logAction, styles = {
   );
 };
 
+// utility function to clean timestamp strings to use as Firebase keys
 function sanitizeForFirebaseKey(str) {
   // Replace any character not allowed in Firebase keys with '_'
   return str.replace(/[^a-zA-Z0-9_-]/g, '_');
 }
 
-// Explicitly group questions by round
+// array of arrays, where each sub-array contains the questions for that round
 const ROUND_QUESTIONS = [
   [ // Round 1
     "Welcome to your Mission Journal, cadet! To get started, enter your codename.",
@@ -175,18 +178,21 @@ export const JournalQuestions = ({ logAction: _logAction, styles = {}, id }) => 
     }
   ];
 
+  // Get sessionId from Firebase (activeSessionId)
   const getSessionId = async () => {
     const sessionIdRef = ref(db, 'activeSessionId');
     const snapshot = await get(sessionIdRef);
     return snapshot.exists() ? snapshot.val() : null;
   };
-
+  // Core Firebase logic for writing responses
   const handleSubmit = async (round) => {
+    // Mark the round as submitting.
     setSubmitting(prev => {
       const copy = [...prev];
       copy[round - 1] = true;
       return copy;
     });
+    // Get studentId from props or localStorage.getItem('selectedPlayer'). 
     try {
       const sessionId = await getSessionId();
       if (!sessionId) {
@@ -198,11 +204,14 @@ export const JournalQuestions = ({ logAction: _logAction, styles = {}, id }) => 
         setSubmitting(prev => { const copy = [...prev]; copy[round - 1] = false; return copy; });
         return;
       }
-      // Calculate the flat index offset for this round
+      // Calculate the flat index offset for this round to determine the right journalAnswers slice
+      // Essentially mapping 1D answer array to 2D rounds/questions structure
       let offset = 0;
       for (let r = 0; r < round - 1; r++) offset += ROUND_QUESTIONS[r].length;
+      // Format a timestamp with getLocalIsoString() and sanitize it.
       const timestamp = getLocalIsoString();
       const sanitizedTimestamp = sanitizeForFirebaseKey(timestamp);
+      //  Build the answers object (keys are 1-based)
       const answers = {};
       for (let i = 0; i < ROUND_QUESTIONS[round-1].length; i++) {
         answers[offset + i + 1] = journalAnswers[offset + i] || "";
@@ -212,8 +221,11 @@ export const JournalQuestions = ({ logAction: _logAction, styles = {}, id }) => 
         timestamp,
         answers
       };
+      // Construct Firebase path.
       const entryPath = `sessions/${sessionId}/JournalEntries/${studentId}/Journal${round}${sanitizedTimestamp}`;
+      // Write an entry to Firebase.
       await set(ref(db, entryPath), entry);
+      // Show “Submitted!” pill for 2.5 seconds.
       setShowSuccess(prev => {
         const copy = [...prev];
         copy[round - 1] = true;
@@ -232,6 +244,7 @@ export const JournalQuestions = ({ logAction: _logAction, styles = {}, id }) => 
     setSubmitting(prev => { const copy = [...prev]; copy[round - 1] = false; return copy; });
   };
 
+  // Log analytics via logAction.
   return (
     <div>
       <h3 style={{ textAlign: 'center', marginBottom: 32 }}>Journal</h3>

@@ -2,7 +2,7 @@
 // All time handling uses local device time only
 import { useState, useEffect, useRef } from 'react';
 import { db, ref, get, onValue } from '../firebase';
-import { formatLocalTime, getLocalIsoString, getLocalTimeOnlyString } from '../utils/timeUtils';
+import { getLocalTimeOnlyString } from '../utils/timeUtils';
 import { playerNames, sectorIds } from '../plots/plotConfigs';
 import { toZonedTime } from 'date-fns-tz';
 
@@ -20,7 +20,7 @@ export function useESPData(enableRealTime = false) {
   const [espData, setEspData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const latestTimestampRef = useRef(null);
+  // const latestTimestampRef = useRef(null);
 
   // Persistent sets for all healthy/infected cadets and sectors
   const [allInfectedCadets, setAllInfectedCadets] = useState(new Set());

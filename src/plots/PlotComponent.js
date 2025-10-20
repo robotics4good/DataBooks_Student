@@ -102,7 +102,7 @@ const PlotComponent = ({ plotLabel, theme, data, logAction, rawData, allInfected
           plotType === 'line' && (
             (xVars[0] === 'Meetings Held' && yVars[0] === 'Time') ||
             (xVars[0] === 'Time' && yVars[0] === 'Meetings Held')
-          ) && meetingEnds && meetingEnds.length > 0 ? (
+          ) && !meetingLogsLoading && meetingEnds && meetingEnds.length > 0 ? (
             <PlotRenderer 
               data={plotDataToUse} 
               xVar={xVars[0]} 

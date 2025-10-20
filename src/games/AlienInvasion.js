@@ -10,11 +10,11 @@ import { getLocalTime } from '../utils/timeUtils';
 // @param {string} sessionId - Unique identifier for this game session (passed from parent)
 const AlienInvasion = () => {
   const { logAction } = useUserLog();
-  // DEBUG: Log session ID
+  // Log session ID
   const sessionId = localStorage.getItem('activeSessionId');
   console.log('AlienInvasion sessionId:', sessionId);
   const { espData, loading, error, getPlotData } = useESPData();
-  // DEBUG: Log espData before rendering
+  // Log espData before rendering
   console.log('AlienInvasion espData:', espData);
   
   // Game state
@@ -24,7 +24,7 @@ const AlienInvasion = () => {
   const [alienShips, setAlienShips] = useState([]);
   const [playerPosition, setPlayerPosition] = useState({ x: 50, y: 50 });
   
-  // Game timer
+  // Game timer. Runs a timer every second when game starts. Automatically ends game when time runs out.
   useEffect(() => {
     if (gameState === 'playing') {
       const timer = setInterval(() => {
@@ -40,7 +40,10 @@ const AlienInvasion = () => {
     }
   }, [gameState]);
 
+  
   // Generate alien ships from ESP data
+  // When new data arrives and game is active: Spawns last 5 ESP entries as new alien ships.
+  // Each ship has: x/y random position (10–90%) intensity from ESP data; type: 'interactive' or 'standard'
   useEffect(() => {
     if (gameState === 'playing' && espData.length > 0) {
       const newShips = espData.slice(-5).map((data, index) => ({

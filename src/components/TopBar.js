@@ -5,12 +5,14 @@ const BUTTON_WIDTH = 200;
 const DUAL_LABEL = 'Go Dual Screen';
 const SINGLE_LABEL = 'Go Single Screen';
 
+/*
 function padLabel(label) {
   // Pad the shorter label with non-breaking spaces to match the longer one
   const maxLen = Math.max(DUAL_LABEL.length, SINGLE_LABEL.length);
   const pad = (str) => str + '\u00A0'.repeat(maxLen - str.length);
   return pad(label);
 }
+*/
 
 const styles = {
   topBar: {
@@ -105,6 +107,8 @@ const styles = {
   }
 };
 
+// renders a top fixed navigation/header bar with a "Back to Games" button on the left, 
+// a centered game/cadet name title, and "Go Dual/Single Screen" toggle button on the right.
 const TopBar = ({ gameName, cadetName, onBack, onToggleView, toggleLabel }) => (
   <div style={styles.topBar}>
     <button onClick={onBack} style={styles.button}>
