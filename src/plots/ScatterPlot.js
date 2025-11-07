@@ -1,395 +1,281 @@
-// ScatterPlot.js - Refactored and cleaned up
-import React from 'react';
+// ScatterPlot.js — FINAL UPGRADED VERSION (axis inversion + meaningful relationships)
+import React from "react";
 import { ResponsiveScatterPlot } from "@nivo/scatterplot";
-import { playerNames, sectorIds } from '../plot-helpers/plotConfigs';
+import { playerNames, sectorIds } from "../plot-helpers/plotConfigs";
 
 // ============================================================================
-// DATA PREPROCESSING
+// HELPERS
 // ============================================================================
+const isCadet = (id) => playerNames.includes(id);
+const isSector = (id) => sectorIds.includes(id);
 
-/**
- * Clean and normalize ESP data
- */
-function preprocessESPData(rawData) {
-  if (!Array.isArray(rawData) || rawData.length === 0) return [];
-  
-  return rawData
-    .filter(d => d.device_id !== 'QR' && d.device_id !== 'CR')
-    .map(d => ({
+// Normalize timestamps and filter bad records
+function preprocessESPData(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((d) => d.device_id && !["QR", "CR"].includes(d.device_id))
+    .map((d) => ({
       ...d,
-      timestamp: typeof d.timestamp === 'string' ? Date.parse(d.timestamp) : d.timestamp
-    }));
+      timestamp:
+        typeof d.timestamp === "string"
+          ? Date.parse(d.timestamp)
+          : d.timestamp,
+    }))
+    .filter((d) => !isNaN(d.timestamp));
 }
-
-// ============================================================================
-// DEVICE CLASSIFICATION
-// ============================================================================
-
-const isCadet = (deviceId) => playerNames.includes(deviceId);
-const isSector = (deviceId) => sectorIds.includes(deviceId);
 
 // ============================================================================
 // VARIABLE ACCESSORS
 // ============================================================================
-
-/**
- * Get the value for a given variable from a data item
- */
-function getVariableValue(variableName) {
+function getVariableValue(varName) {
   const accessors = {
-    'Time': (item) => item.timestamp,
-    'Hour': (item) => item.hour || new Date(item.timestamp).getHours(),
-    'Infected Cadets': (item) => {
-      if (item.infection_status === 1 && isCadet(item.device_id)) return 1;
-      return 0;
-    },
-    'Healthy Cadets': (item) => {
-      if ((item.infection_status === 0 || item.infection_status === 0.5) && isCadet(item.device_id)) return 1;
-      return 0;
-    },
-    'Infected Sectors': (item) => {
-      if (item.infection_status === 1 && isSector(item.device_id)) return 1;
-      return 0;
-    },
-    'Healthy Sectors': (item) => {
-      if ((item.infection_status === 0 || item.infection_status === 0.5) && isSector(item.device_id)) return 1;
-      return 0;
-    },
-    'Button A Presses': (item) => item.buttonA || 0,
-    'Button B Presses': (item) => item.buttonB || 0,
-    'Interactions': (item) => item.interactions || 0,
-    'Beacon Array': (item) => item.beaconArray || 0,
-    'Total Packets': (item) => item.totalPackets || 0,
-    'Unique Devices': (item) => item.uniqueDevices || 0,
-    'Infection Rate': (item) => item.infectionRate || 0,
-    'Activity Level': (item) => item.activityLevel || 0,
+    Time: (d) => d.timestamp,
+    Hour: (d) => d.hour || new Date(d.timestamp).getHours(),
+    "Infected Cadets": (d) =>
+      d.infection_status === 1 && isCadet(d.device_id) ? 1 : 0,
+    "Healthy Cadets": (d) =>
+      (d.infection_status === 0 || d.infection_status === 0.5) &&
+      isCadet(d.device_id)
+        ? 1
+        : 0,
+    "Infected Sectors": (d) =>
+      d.infection_status === 1 && isSector(d.device_id) ? 1 : 0,
+    "Healthy Sectors": (d) =>
+      (d.infection_status === 0 || d.infection_status === 0.5) &&
+      isSector(d.device_id)
+        ? 1
+        : 0,
   };
-  
-  return accessors[variableName] || ((item) => item[variableName]);
+  return accessors[varName] || ((d) => d[varName]);
 }
 
 // ============================================================================
-// SCATTER PLOT DATA GENERATORS
+// DATA GENERATORS
 // ============================================================================
 
-/**
- * Generate simple X vs Y scatter: just plot raw data points
- */
-function generateSimpleScatter(data, xVar, yVar) {
-  const xAccessor = getVariableValue(xVar);
-  const yAccessor = getVariableValue(yVar);
-  
-  const points = data.map(item => ({
-    x: xAccessor(item),
-    y: yAccessor(item)
-  })).filter(pt => 
-    pt.x !== undefined && pt.y !== undefined && 
-    pt.x !== null && pt.y !== null &&
-    !isNaN(pt.x) && !isNaN(pt.y)
-  );
-  
-  console.log(`[ScatterPlot] Simple scatter generated ${points.length} points`);
-  return points;
-}
+// Helper: aggregate infections/health per time bucket
+function aggregateCounts(data, bucketMinutes = 5) {
+  const bucketSize = bucketMinutes * 60 * 1000;
+  const buckets = {};
 
-/**
- * Generate time-based scatter: Time vs [variable]
- * Each point is a single ESP record
- */
-function generateTimeScatter(data, yVar) {
-  const points = data.map(item => ({
-    x: item.timestamp,
-    y: getVariableValue(yVar)(item)
-  })).filter(pt => 
-    pt.x !== undefined && pt.y !== undefined && 
-    pt.x !== null && pt.y !== null &&
-    !isNaN(pt.x) && !isNaN(pt.y)
-  );
-  
-  console.log(`[ScatterPlot] Time scatter generated ${points.length} points`);
-  return points;
-}
-
-/**
- * Generate hour-based scatter: aggregate data by hour
- */
-function generateHourScatter(data, yVar) {
-  // Group by hour
-  const hourGroups = {};
-  for (let hour = 0; hour < 24; hour++) {
-    hourGroups[hour] = [];
-  }
-  
-  data.forEach(item => {
-    const hour = item.hour || new Date(item.timestamp).getHours();
-    if (hourGroups[hour]) {
-      hourGroups[hour].push(item);
-    }
-  });
-  
-  // Aggregate for each hour
-  const yAccessor = getVariableValue(yVar);
-  const points = Object.entries(hourGroups)
-    .map(([hour, items]) => {
-      if (items.length === 0) return null;
-      
-      // Sum the y values for this hour
-      const y = items.reduce((sum, item) => sum + (yAccessor(item) || 0), 0);
-      return { x: parseInt(hour), y };
-    })
-    .filter(pt => pt !== null && pt.y > 0);
-  
-  console.log(`[ScatterPlot] Hour scatter generated ${points.length} points`);
-  return points;
-}
-
-/**
- * Generate device-aggregated scatter: one point per device
- * Useful for plotting device totals/stats
- */
-function generateDeviceScatter(data, xVar, yVar) {
-  // Group records by device
-  const deviceGroups = {};
-  
-  data.forEach(item => {
-    const deviceId = item.device_id;
-    if (!deviceGroups[deviceId]) {
-      deviceGroups[deviceId] = {
-        deviceId,
-        records: [],
-        buttonAPresses: 0,
-        buttonBPresses: 0,
-        interactions: 0,
-        beaconArray: 0,
-        latestStatus: item.infection_status,
-        isCadet: isCadet(deviceId),
-        isSector: isSector(deviceId)
+  data.forEach((d) => {
+    const t = Math.floor(d.timestamp / bucketSize) * bucketSize;
+    if (!buckets[t])
+      buckets[t] = {
+        infectedCadets: 0,
+        healthyCadets: 0,
+        infectedSectors: 0,
+        healthySectors: 0,
       };
-    }
-    
-    const device = deviceGroups[deviceId];
-    device.records.push(item);
-    device.buttonAPresses += item.buttonA || 0;
-    device.buttonBPresses += item.buttonB || 0;
-    device.interactions += item.interactions || 0;
-    device.beaconArray += item.beaconArray || 0;
-    
-    // Keep latest infection status
-    if (item.timestamp > (device.latestTimestamp || 0)) {
-      device.latestStatus = item.infection_status;
-      device.latestTimestamp = item.timestamp;
+
+    if (isCadet(d.device_id)) {
+      if (d.infection_status === 1) buckets[t].infectedCadets++;
+      else buckets[t].healthyCadets++;
+    } else if (isSector(d.device_id)) {
+      if (d.infection_status === 1) buckets[t].infectedSectors++;
+      else buckets[t].healthySectors++;
     }
   });
-  
-  // Convert to points
-  const xAccessor = getVariableValue(xVar);
-  const yAccessor = getVariableValue(yVar);
-  
-  const points = Object.values(deviceGroups)
-    .map(device => ({
-      x: xAccessor(device),
-      y: yAccessor(device)
-    }))
-    .filter(pt => 
-      pt.x !== undefined && pt.y !== undefined && 
-      pt.x !== null && pt.y !== null &&
-      !isNaN(pt.x) && !isNaN(pt.y)
-    );
-  
-  console.log(`[ScatterPlot] Device scatter generated ${points.length} points from ${Object.keys(deviceGroups).length} devices`);
-  return points;
+
+  return Object.entries(buckets).map(([t, counts]) => ({
+    time: new Date(Number(t)),
+    ...counts,
+  }));
 }
 
 // ============================================================================
-// PLOT DATA GENERATION (Router)
+// PLOT LOGIC
 // ============================================================================
 
-/**
- * Route to the correct scatter generation function based on xVar and yVar
- */
-function generateScatterData(xVar, yVar, espData) {
-  console.log(`[ScatterPlot] Generating scatter for ${xVar} vs ${yVar}`, {
-    dataLen: espData?.length
-  });
-  
-  if (!espData || espData.length === 0) {
-    console.warn('[ScatterPlot] No ESP data available');
-    return [];
+// Build points for one variable vs. time
+function buildTimeSeries(data, variable) {
+  return data.map((entry) => ({
+    x: entry.time,
+    y: entry[variable],
+  }));
+}
+
+// Build relationship plot (e.g. infected cadets vs infected sectors)
+function buildRelationalPlot(data, varX, varY) {
+  return data.map((entry) => ({
+    x: entry[varX],
+    y: entry[varY],
+  }));
+}
+
+// Generate scatter data with full inversion support
+function generateScatterData(xVar, yVar, data) {
+  if (!data || !data.length) return [];
+
+  const aggregated = aggregateCounts(data);
+
+  const timeBased =
+    xVar === "Time" ||
+    yVar === "Time" ||
+    xVar === "Hour" ||
+    yVar === "Hour";
+
+  // 🔹 Relationship plots (e.g. Infected Cadets vs Infected Sectors)
+  const relMap = {
+    "Infected Cadets": "infectedCadets",
+    "Healthy Cadets": "healthyCadets",
+    "Infected Sectors": "infectedSectors",
+    "Healthy Sectors": "healthySectors",
+  };
+
+  const xKey = relMap[xVar];
+  const yKey = relMap[yVar];
+
+  // Relationship between infection groups
+  if (xKey && yKey) return buildRelationalPlot(aggregated, xKey, yKey);
+
+  // Time series (forward or inverted)
+  if (timeBased) {
+    const variable =
+      relMap[yVar] || relMap[xVar] || "infectedCadets"; // default fallback
+    const points = buildTimeSeries(aggregated, variable);
+    if (xVar === "Time")
+      return points.map((p) => ({ x: p.x, y: p.y })); // normal orientation
+    else
+      return points.map((p) => ({ x: p.y, y: p.x })); // inverted axis
   }
-  
-  // Time-based scatter
-  if (xVar === 'Time') {
-    return generateTimeScatter(espData, yVar);
-  }
-  
-  // Hour-based scatter (aggregated)
-  if (xVar === 'Hour') {
-    return generateHourScatter(espData, yVar);
-  }
-  
-  // Device status variables might want per-device aggregation
-  const deviceStatusVars = ['Infected Cadets', 'Healthy Cadets', 'Infected Sectors', 'Healthy Sectors'];
-  if (deviceStatusVars.includes(xVar) || deviceStatusVars.includes(yVar)) {
-    // If both are device status vars, or one is and the other is an aggregate metric, use device scatter
-    return generateDeviceScatter(espData, xVar, yVar);
-  }
-  
-  // Default: simple scatter (raw data points)
-  return generateSimpleScatter(espData, xVar, yVar);
+
+  return [];
 }
 
 // ============================================================================
-// REACT COMPONENT
+// COMPONENT
 // ============================================================================
-
-const ScatterPlot = (props) => {
-  const { 
-    data = [], 
-    xVar = 'Time', 
-    yVar = 'Infected Cadets',
-    //sessionId,
-    //personFilter,
-    //sectorFilter,
-    //meetingEndsSanDiego = []
-  } = props;
-
-  const [scatterPoints, setScatterPoints] = React.useState([]);
+const ScatterPlot = ({ data = [], xVar = "Time", yVar = "Infected Cadets" }) => {
+  const [points, setPoints] = React.useState([]);
 
   React.useEffect(() => {
-    console.log('[ScatterPlot] useEffect triggered:', {
-      xVar,
-      yVar,
-      dataLen: data?.length
-    });
-    
-    const espData = preprocessESPData(data);
-    const points = generateScatterData(xVar, yVar, espData);
-    
-    console.log('[ScatterPlot] Generated points:', points?.length);
-    setScatterPoints(points);
-  }, [xVar, yVar, data]);
+    const clean = preprocessESPData(data);
+    setPoints(generateScatterData(xVar, yVar, clean));
+  }, [data, xVar, yVar]);
 
-  // Format data for Nivo
-  const scatterData = scatterPoints.length > 0 
-    ? [{ id: `${xVar} vs ${yVar}`, data: scatterPoints }]
-    : [];
+  const scatterData =
+    points.length > 0 ? [{ id: `${xVar} vs ${yVar}`, data: points }] : [];
 
-  // Empty state
-  if (scatterData.length === 0 || scatterData[0].data.length === 0) {
+  if (!points.length)
     return (
-      <div style={{ 
-        height: "100%", 
-        minHeight: 320,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontSize: "1.1rem",
-        color: "#666",
-        background: "#f8f3ea",
-        borderRadius: 8,
-        border: "1.5px solid #e0e0e0",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
-      }}>
+      <div
+        style={{
+          height: "100%",
+          minHeight: 320,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "1.1rem",
+          color: "#666",
+          background: "#f8f3ea",
+          borderRadius: 8,
+          border: "1.5px solid #e0e0e0",
+        }}
+      >
         No data to display currently
       </div>
     );
-  }
 
-  // Calculate dynamic scales based on actual data
-  const allXValues = scatterPoints.map(p => p.x).filter(x => typeof x === 'number');
-  const allYValues = scatterPoints.map(p => p.y).filter(y => typeof y === 'number');
-  
-  const maxX = allXValues.length > 0 ? Math.max(...allXValues) : 100;
-  const minX = allXValues.length > 0 ? Math.min(...allXValues) : 0;
-  const maxY = allYValues.length > 0 ? Math.max(...allYValues) : 100;
-  const minY = allYValues.length > 0 ? Math.min(...allYValues) : 0;
-  
-  const xPadding = (maxX - minX) * 0.1 || 1;
-  const yPadding = (maxY - minY) * 0.1 || 1;
+  // Bounds
+  const isTimeOnX = xVar === "Time";
+  const isTimeOnY = yVar === "Time";
 
-  // Format X-axis labels for time
-  const formatXAxis = (value) => {
-    if (xVar === 'Time') {
-      return new Date(value).toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit', 
-        hour12: false 
-      });
-    }
-    return value;
-  };
+  const allX = points.map((p) =>
+    isTimeOnX && p.x instanceof Date ? p.x.getTime() : Number(p.x)
+  );
+  const allY = points.map((p) =>
+    isTimeOnY && p.y instanceof Date ? p.y.getTime() : Number(p.y)
+  );
+  const minX = Math.min(...allX),
+    maxX = Math.max(...allX),
+    minY = Math.min(...allY),
+    maxY = Math.max(...allY);
+  const xPad = (maxX - minX) * 0.1 || 1;
+  const yPad = (maxY - minY) * 0.1 || 1;
+
+  // Axis formatters
+  const formatTime = (v) =>
+    new Date(v).toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+
+  const formatX = (v) => (isTimeOnX ? formatTime(v) : v);
+  const formatY = (v) => (isTimeOnY ? formatTime(v) : v);
+
+  // X/Y scale type
+  const xScale =
+    isTimeOnX
+      ? { type: "time", format: "native", precision: "minute" }
+      : { type: "linear", min: minX - xPad, max: maxX + xPad };
+
+  const yScale =
+    isTimeOnY
+      ? { type: "time", format: "native", precision: "minute" }
+      : { type: "linear", min: minY - yPad, max: maxY + yPad };
 
   return (
     <div style={{ height: "100%", width: "100%", maxHeight: 400 }}>
-      <div style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: 8 }}>
+      <div style={{ fontWeight: 700, fontSize: "1.1rem", marginBottom: 8 }}>
         {`Scatter Plot of ${xVar} vs ${yVar}`}
       </div>
       <ResponsiveScatterPlot
         data={scatterData}
-        margin={{ top: 60, right: 90, bottom: 130, left: 90 }}
-        xScale={{ 
-          type: 'linear', 
-          min: Math.max(0, minX - xPadding), 
-          max: maxX + xPadding 
-        }}
-        yScale={{ 
-          type: 'linear', 
-          min: Math.max(0, minY - yPadding), 
-          max: maxY + yPadding 
-        }}
+        margin={{ top: 50, right: 80, bottom: 120, left: 90 }}
+        xScale={xScale}
+        yScale={yScale}
         axisBottom={{
           legend: xVar,
           legendOffset: 56,
           legendPosition: "middle",
           tickRotation: -45,
-          format: formatXAxis,
+          format: formatX,
         }}
-        axisLeft={{ 
-          legend: yVar, 
-          legendOffset: -60, 
+        axisLeft={{
+          legend: yVar,
+          legendOffset: -60,
           legendPosition: "middle",
+          format: formatY,
         }}
-        colors={{ scheme: "category10" }}
+        colors={{ scheme: "set1" }}
         pointSize={8}
         pointBorderWidth={2}
-        pointBorderColor={{ from: 'serieColor' }}
+        pointBorderColor={{ from: "serieColor" }}
         useMesh={true}
         animate={false}
         theme={{
           axis: {
-            domain: { line: { stroke: '#000000' } },
-            ticks: { line: { stroke: '#000000' }, text: { fill: '#000000' } },
-            legend: { text: { fill: '#000000' } },
+            domain: { line: { stroke: "#000" } },
+            ticks: { line: { stroke: "#000" }, text: { fill: "#000" } },
           },
-          grid: { line: { stroke: '#d3d3d3', strokeWidth: 1 } },
+          grid: { line: { stroke: "#d3d3d3", strokeWidth: 1 } },
         }}
-        legends={[{
-          anchor: 'bottom-right',
-          direction: 'column',
-          translateX: 80,
-          itemWidth: 100,
-          itemHeight: 16,
-          itemsSpacing: 3,
-          symbolSize: 12,
-          symbolShape: 'circle',
-        }]}
         tooltip={({ node }) => (
-          <div style={{
-            background: 'white',
-            padding: '9px 12px',
-            border: '1px solid #ccc',
-            borderRadius: '4px',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          }}>
-            <div style={{ color: node.color }}>
-              <strong>{xVar}</strong>: {
-                xVar === 'Time' 
-                  ? new Date(node.data.x).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
-                  : node.data.x
-              }
+          <div
+            style={{
+              background: "white",
+              padding: "9px 12px",
+              border: "1px solid #ccc",
+              borderRadius: "4px",
+            }}
+          >
+            <div>
+              <strong>{xVar}</strong>:{" "}
+              {isTimeOnX
+                ? formatTime(node.data.x)
+                : node.data.x.toFixed
+                ? node.data.x.toFixed(2)
+                : node.data.x}
             </div>
-            <div style={{ color: node.color }}>
-              <strong>{yVar}</strong>: {node.data.y}
+            <div>
+              <strong>{yVar}</strong>:{" "}
+              {isTimeOnY
+                ? formatTime(node.data.y)
+                : node.data.y.toFixed
+                ? node.data.y.toFixed(2)
+                : node.data.y}
             </div>
           </div>
         )}
