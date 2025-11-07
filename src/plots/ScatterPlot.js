@@ -1,7 +1,7 @@
 // ScatterPlot.js - Refactored and cleaned up
 import React from 'react';
 import { ResponsiveScatterPlot } from "@nivo/scatterplot";
-import { playerNames, sectorIds } from './plotConfigs';
+import { playerNames, sectorIds } from '../plot-helpers/plotConfigs';
 
 // ============================================================================
 // DATA PREPROCESSING

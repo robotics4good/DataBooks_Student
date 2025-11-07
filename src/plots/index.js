@@ -1,10 +1,10 @@
 // index.js - Main exports for the plots module
 
 // Main component
-export { default as PlotComponent } from './PlotComponent';
+export { default as PlotComponent } from '../plot-helpers/PlotComponent';
 
 // Configuration and constants
-export { plotConfigs, playerNames } from './plotConfigs';
+export { plotConfigs, playerNames } from '../plot-helpers/plotConfigs';
 
 // Utility functions
 export { 
@@ -15,10 +15,10 @@ export {
   filterData, 
   toggleVariable, 
   logPlotAction 
-} from './plotUtils';
+} from '../plot-helpers/plotUtils';
 
 // Custom hook
-export { usePlotState } from './usePlotState';
+export { usePlotState } from '../plot-helpers/usePlotState';
 
 // Individual plot components (for direct access if needed)
 export { default as LinePlot } from './LinePlot';

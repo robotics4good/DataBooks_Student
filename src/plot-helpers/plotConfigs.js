@@ -1,9 +1,9 @@
 // plotConfigs.js - Configuration data for different plot types
-import LinePlot from './LinePlot';
-import ScatterPlot from './ScatterPlot';
-import BarPlot from './BarPlot';
-import HistogramPlot from './HistogramPlot';
-import PiePlot from './PiePlot';
+import LinePlot from '../plots/LinePlot';
+import ScatterPlot from '../plots/ScatterPlot';
+import BarPlot from '../plots/BarPlot';
+import HistogramPlot from '../plots/HistogramPlot';
+import PiePlot from '../plots/PiePlot';
 
 // Device IDs constant (formerly playerNames, now S1-S12 for cadet device IDs)
 export const playerNames = [

@@ -6,7 +6,7 @@
 
 import React from "react";
 import { ResponsiveBar } from "@nivo/bar";
-import { transformData } from "./plotUtils";
+import { transformData } from "../plot-helpers/plotUtils";
 
 // ============================================================================
 // HELPER: safely transform data into histogram bins
