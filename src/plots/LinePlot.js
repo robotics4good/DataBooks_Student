@@ -3,15 +3,6 @@ import React from 'react';
 import { ResponsiveLine } from "@nivo/line";
 
 // ============================================================================
-// KNOWN BUGS
-// - Meetings Held vs. Infected Sectors ("No meeting data available.")
-// - Meetings Held vs. Infected Cadets ("No meeting data available.")
-// - Meetings Held vs. Healthy Sectors ("No meeting data available.")
-// - Meetings Held vs. Healthy Cadets ("No meeting data available.")
-// ============================================================================
-
-
-// ============================================================================
 // DATA PREPROCESSING
 // ============================================================================
 

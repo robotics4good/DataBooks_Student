@@ -1,7 +1,7 @@
 import React, { useState, useRef, useLayoutEffect } from 'react';
 import AlienInvasion from "./games/AlienInvasion";
 import { useUserLog } from "./UserLog";
-import PlotComponent from "./plots/PlotComponent";
+import PlotComponent from "./plot-helpers/PlotComponent";
 import { useJournal } from "./JournalContext";
 import { JournalQuestions } from "./components/JournalQuestions";
 import TopBar from './components/TopBar';

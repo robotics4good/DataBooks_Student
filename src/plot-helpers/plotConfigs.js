@@ -73,12 +73,18 @@ export const plotConfigs = {
   scatter: {
     label: 'Scatter Plot',
     allowedMatrix: {
-      "Time":              { "Time": false, "Meetings Held": true,  "Infected Sectors": true,  "Infected Cadets": true, "Healthy Sectors": true, "Healthy Cadets": true },
-      "Meetings Held":     { "Time": true,  "Meetings Held": false, "Infected Sectors": true,  "Infected Cadets": true, "Healthy Sectors": true, "Healthy Cadets": true },
-      "Infected Sectors":  { "Time": true,  "Meetings Held": true,  "Infected Sectors": false, "Infected Cadets": true, "Healthy Sectors": false, "Healthy Cadets": true },
-      "Infected Cadets":   { "Time": true,  "Meetings Held": true,  "Infected Sectors": true,  "Infected Cadets": false, "Healthy Sectors": true, "Healthy Cadets": false },
-      "Healthy Sectors":   { "Time": true,  "Meetings Held": true,  "Infected Sectors": false, "Infected Cadets": true, "Healthy Sectors": false, "Healthy Cadets": true },
-      "Healthy Cadets":    { "Time": true,  "Meetings Held": true,  "Infected Sectors": true,  "Infected Cadets": false, "Healthy Sectors": true, "Healthy Cadets": false },
+      "Time":              
+        { "Time": false, "Meetings Held": true,  "Infected Sectors": true,  "Infected Cadets": true, "Healthy Sectors": true, "Healthy Cadets": true },
+      "Meetings Held":     
+        { "Time": true,  "Meetings Held": false, "Infected Sectors": true,  "Infected Cadets": true, "Healthy Sectors": true, "Healthy Cadets": true },
+      "Infected Sectors":  
+        { "Time": true,  "Meetings Held": true,  "Infected Sectors": false, "Infected Cadets": true, "Healthy Sectors": false, "Healthy Cadets": true },
+      "Infected Cadets":   
+        { "Time": true,  "Meetings Held": true,  "Infected Sectors": true,  "Infected Cadets": false, "Healthy Sectors": true, "Healthy Cadets": false },
+      "Healthy Sectors":   
+        { "Time": true,  "Meetings Held": true,  "Infected Sectors": false, "Infected Cadets": true, "Healthy Sectors": false, "Healthy Cadets": true },
+      "Healthy Cadets":    
+        { "Time": true,  "Meetings Held": true,  "Infected Sectors": true,  "Infected Cadets": false, "Healthy Sectors": true, "Healthy Cadets": false },
     },
     variables: ["Time", "Meetings Held", "Infected Sectors", "Infected Cadets", "Healthy Sectors", "Healthy Cadets"],
     component: ScatterPlot,
@@ -86,12 +92,18 @@ export const plotConfigs = {
   bar: {
     label: 'Bar Plot',
     allowedMatrix: {
-      "Time":              { "Time": false, "Meetings Held": true,  "Infected Sectors": true,  "Infected Cadets": true, "Healthy Sectors": true, "Healthy Cadets": true },
-      "Meetings Held":     { "Time": false, "Meetings Held": false, "Infected Sectors": true,  "Infected Cadets": true, "Healthy Sectors": true, "Healthy Cadets": true },
-      "Infected Sectors":  { "Time": false, "Meetings Held": true,  "Infected Sectors": false, "Infected Cadets": true, "Healthy Sectors": false, "Healthy Cadets": true },
-      "Infected Cadets":   { "Time": false, "Meetings Held": true,  "Infected Sectors": true,  "Infected Cadets": false, "Healthy Sectors": true, "Healthy Cadets": false },
-      "Healthy Sectors":   { "Time": false, "Meetings Held": true,  "Infected Sectors": false, "Infected Cadets": true, "Healthy Sectors": false, "Healthy Cadets": true },
-      "Healthy Cadets":    { "Time": false, "Meetings Held": true,  "Infected Sectors": true,  "Infected Cadets": false, "Healthy Sectors": true, "Healthy Cadets": false },
+      "Time":              
+      { "Time": false, "Meetings Held": true,  "Infected Sectors": true,  "Infected Cadets": true, "Healthy Sectors": true, "Healthy Cadets": true },
+      "Meetings Held":     
+      { "Time": false, "Meetings Held": false, "Infected Sectors": true,  "Infected Cadets": true, "Healthy Sectors": true, "Healthy Cadets": true },
+      "Infected Sectors":  
+      { "Time": false, "Meetings Held": true,  "Infected Sectors": false, "Infected Cadets": true, "Healthy Sectors": false, "Healthy Cadets": true },
+      "Infected Cadets":   
+      { "Time": false, "Meetings Held": true,  "Infected Sectors": true,  "Infected Cadets": false, "Healthy Sectors": true, "Healthy Cadets": false },
+      "Healthy Sectors":   
+      { "Time": false, "Meetings Held": true,  "Infected Sectors": false, "Infected Cadets": true, "Healthy Sectors": false, "Healthy Cadets": true },
+      "Healthy Cadets":    
+      { "Time": false, "Meetings Held": true,  "Infected Sectors": true,  "Infected Cadets": false, "Healthy Sectors": true, "Healthy Cadets": false },
     },
     variables: ["Time", "Meetings Held", "Infected Sectors", "Infected Cadets", "Healthy Sectors", "Healthy Cadets"],
     component: BarPlot,

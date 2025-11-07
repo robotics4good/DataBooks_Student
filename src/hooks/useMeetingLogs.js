@@ -95,6 +95,7 @@ export function useMeetingLogs(sessionId) {
         setError(null);
 
         const ends = await fetchMeetingEnds(sessionId);
+        console.log("[useMeetingLogs] Meeting Ends:", ends);
         setMeetingEnds(ends);
       } catch (err) {
         console.error("[useMeetingLogs] Error:", err);

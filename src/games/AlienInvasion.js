@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { useESPData } from "../hooks/useESPData";
 import { useUserLog } from "../UserLog";
-import PlotComponent from "../plots/PlotComponent";
+import PlotComponent from "../plot-helpers/PlotComponent";
 import { getLocalTime } from '../utils/timeUtils';
 
 // @param {string} sessionId - Unique identifier for this game session (passed from parent)

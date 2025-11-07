@@ -7,7 +7,7 @@
 import { useState, useEffect, useRef } from "react";
 import { db, ref, get, onValue } from "../firebase";
 import { toZonedTime } from "date-fns-tz";
-import { playerNames, sectorIds } from "../plots/plotConfigs";
+import { playerNames, sectorIds } from "../plot-helpers/plotConfigs";
 import { fetchMeetingEnds } from "./useMeetingLogs"; // <-- Reuse meeting log logic
 
 const SAN_DIEGO_TZ = "America/Los_Angeles";
@@ -79,6 +79,7 @@ function normalizeESPData(rawData, meetingEnds) {
     const meetings_held = meetingEnds.filter(t => t <= r.localTime).length;
     const isCadet = playerNames.includes(r.device_id);
     const isInfected = r.infection_status === 1;
+    console.log(r.device_id, "isCadet:", isCadet, "isInfected:", isInfected, "hour:", hour, "Meetings Held:",meetings_held, "Session Half:", session_half);
     return {
       ...r,
       hour,

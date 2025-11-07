@@ -1,6 +1,6 @@
 import React, { useState, useLayoutEffect } from 'react';
 import AlienInvasion from "./games/AlienInvasion";
-import PlotComponent from "./plots/PlotComponent";
+import PlotComponent from "./plot-helpers/PlotComponent";
 import { useUserLog } from "./UserLog";
 import { useJournal } from "./JournalContext";
 import { JournalQuestions } from "./components/JournalQuestions";
