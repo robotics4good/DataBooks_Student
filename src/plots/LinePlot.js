@@ -131,7 +131,8 @@ function generateTimeSeriesData(espData, deviceType, statusType, maxBins = 30) {
   const sortedData = [...espData].sort((a, b) => a.timestamp - b.timestamp);
   
   const minTime = sortedData[0].timestamp;
-  const maxTime = Date.now(); // Use current time as upper bound
+  const maxTime = sortedData[sortedData.length - 1].timestamp; // Use current time as upper bound
+  console.log("minTime:", new Date(minTime), "maxTime:", new Date(maxTime));
   
   const bins = createTimeBins(minTime, maxTime, maxBins);
   
@@ -297,7 +298,7 @@ const LinePlot = (props) => {
     data = [], 
     xVar = 'Time', 
     yVar = 'Infected Cadets', 
-    sessionId,
+    //sessionId,
     meetingEndsSanDiego = []
   } = props;
 

@@ -297,7 +297,7 @@ const PlotControls = ({
           </>
         )}
 
-        {/* Person filter */}
+        {/* Person filter
         {showCadetFilter && (
           <>
             <div className={styles.filterLabel}>Cadet Filter:</div>
@@ -342,7 +342,7 @@ const PlotControls = ({
         )}
 
         {/* Sector filter */}
-        {showSectorFilter && (
+        {/* {showSectorFilter && (
           <>
             <div className={styles.filterLabel}>Sector Filter:</div>
             <div className={styles.filterContainer}>
@@ -383,7 +383,7 @@ const PlotControls = ({
               </div>
             </div>
           </>
-        )}
+        )} */} 
       </div>
     </div>
   );

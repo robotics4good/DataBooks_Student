@@ -79,7 +79,7 @@ function normalizeESPData(rawData, meetingEnds) {
     const meetings_held = meetingEnds.filter(t => t <= r.localTime).length;
     const isCadet = playerNames.includes(r.device_id);
     const isInfected = r.infection_status === 1;
-    console.log(r.device_id, "isCadet:", isCadet, "isInfected:", isInfected, "hour:", hour, "Meetings Held:",meetings_held, "Session Half:", session_half);
+    //console.log(r.device_id, "isCadet:", isCadet, "isInfected:", isInfected, "hour:", hour, "Meetings Held:",meetings_held, "Session Half:", session_half);
     return {
       ...r,
       hour,

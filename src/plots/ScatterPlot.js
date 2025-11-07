@@ -247,10 +247,10 @@ const ScatterPlot = (props) => {
     data = [], 
     xVar = 'Time', 
     yVar = 'Infected Cadets',
-    sessionId,
-    personFilter,
-    sectorFilter,
-    meetingEndsSanDiego = []
+    //sessionId,
+    //personFilter,
+    //sectorFilter,
+    //meetingEndsSanDiego = []
   } = props;
 
   const [scatterPoints, setScatterPoints] = React.useState([]);

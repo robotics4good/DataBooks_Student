@@ -258,8 +258,8 @@ const PlotComponent = ({
     plotType,
     xVars,
     yVars,
-    //cadetFilter,
-    //sectorFilter,
+    cadetFilter,
+    sectorFilter,
     allowedMatrix,
     variables,
     PlotRenderer,
@@ -268,8 +268,8 @@ const PlotComponent = ({
     handleYVariableToggle,
     handleHistogramXVariableToggle,
     handlePieVariableSelect,
-    //handleCadetFilterToggle,
-    //handleSectorFilterToggle,
+    handleCadetFilterToggle,
+    handleSectorFilterToggle,
     onSelectAllCadets,
     onDeselectAllCadets,
     onSelectAllSectors,
@@ -334,8 +334,8 @@ const PlotComponent = ({
           variables={variables}
           xVars={xVars}
           yVars={yVars}
-          //personFilter={cadetFilter}
-          //sectorFilter={sectorFilter}
+          personFilter={cadetFilter}
+          sectorFilter={sectorFilter}
           allowedMatrix={allowedMatrix}
           plotLabel={plotLabel}
           onPlotTypeChange={handlePlotTypeChange}
@@ -343,8 +343,8 @@ const PlotComponent = ({
           onYVariableToggle={handleYVariableToggle}
           onHistogramXVariableToggle={handleHistogramXVariableToggle}
           onPieVariableSelect={handlePieVariableSelect}
-          //onPersonFilterToggle={handleCadetFilterToggle}
-          //onSectorFilterToggle={handleSectorFilterToggle}
+          onPersonFilterToggle={handleCadetFilterToggle}
+          onSectorFilterToggle={handleSectorFilterToggle}
           onSelectAllDevices={onSelectAllCadets}
           onDeselectAllDevices={onDeselectAllCadets}
           onSelectAllSectors={onSelectAllSectors}
@@ -371,8 +371,8 @@ const PlotComponent = ({
           variables={variables}
           xVars={xVars}
           yVars={yVars}
-          //personFilter={cadetFilter}
-          //sectorFilter={sectorFilter}
+          personFilter={cadetFilter}
+          sectorFilter={sectorFilter}
           allowedMatrix={allowedMatrix}
           plotLabel={plotLabel}
           onPlotTypeChange={handlePlotTypeChange}
@@ -380,8 +380,8 @@ const PlotComponent = ({
           onYVariableToggle={handleYVariableToggle}
           onHistogramXVariableToggle={handleHistogramXVariableToggle}
           onPieVariableSelect={handlePieVariableSelect}
-          //onPersonFilterToggle={handleCadetFilterToggle}
-          //onSectorFilterToggle={handleSectorFilterToggle}
+          onPersonFilterToggle={handleCadetFilterToggle}
+          onSectorFilterToggle={handleSectorFilterToggle}
           onSelectAllDevices={onSelectAllCadets}
           onDeselectAllDevices={onDeselectAllCadets}
           onSelectAllSectors={onSelectAllSectors}
@@ -431,8 +431,8 @@ const PlotComponent = ({
         theme={theme}
         sessionId={sessionId}
         meetingEndsSanDiego={meetingEnds}
-        //personFilter={cadetFilter}
-        //sectorFilter={sectorFilter}
+        personFilter={cadetFilter}
+        sectorFilter={sectorFilter}
         rawData={processedData}
         allInfectedCadets={deviceStatus.allInfectedCadets}
         allHealthyCadets={deviceStatus.allHealthyCadets}
@@ -454,8 +454,8 @@ const PlotComponent = ({
         variables={variables}
         xVars={xVars}
         yVars={yVars}
-        //personFilter={cadetFilter}
-        //sectorFilter={sectorFilter}
+        personFilter={cadetFilter}
+        sectorFilter={sectorFilter}
         allowedMatrix={allowedMatrix}
         plotLabel={plotLabel}
         onPlotTypeChange={handlePlotTypeChange}
@@ -463,8 +463,8 @@ const PlotComponent = ({
         onYVariableToggle={handleYVariableToggle}
         onHistogramXVariableToggle={handleHistogramXVariableToggle}
         onPieVariableSelect={handlePieVariableSelect}
-        //onPersonFilterToggle={handleCadetFilterToggle}
-        //onSectorFilterToggle={handleSectorFilterToggle}
+        onPersonFilterToggle={handleCadetFilterToggle}
+        onSectorFilterToggle={handleSectorFilterToggle}
         onSelectAllDevices={onSelectAllCadets}
         onDeselectAllDevices={onDeselectAllCadets}
         onSelectAllSectors={onSelectAllSectors}
